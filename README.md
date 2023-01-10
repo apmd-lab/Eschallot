@@ -2,7 +2,15 @@
 
 This package implements transfer matrix methods for Mie scattering of multi-shell particles [1,2]
 
+Optimization can be done by:
 
+1. Needle optimization (simultaneously optimize boundary positions, materials, and the number of layers)
+
+2. Gradient descent (optimize boundary positions only with fixed materials and the number of layers)
+
+The needle optimization algorithm can be conceptualized as (a) optimizing the boundary positions by gradient descent (shape optimization) and (b) optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (topology optimization)
+
+![text](flowchart.jpg)
 
 Refer to this paper for more details.
 
@@ -17,6 +25,10 @@ References:
 **Compute efficiencies and the phase function:** `simulate_particle.py`
 
 **Run needle optimization:** `run_needle_optimization.py`
+
+- To define a custom cost function, change the variables in 'radius_sweep'
+
+- To define a custom range for the initial particle radius, change the inputs to 'radius_sweep' (under if __name__ == '__main__')
 
 **Run gradient descent:** `run_gradient_optimization.py`
 
