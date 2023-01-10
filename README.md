@@ -1,5 +1,5 @@
 # Comprehensive Package for the Simulation and Optimization of Spherical Particles
-Briefly, 
+Briefly, \n
 Refer to this paper for the details.
 # Quickstart
 Compute efficiencies and the phase function: simulate_particle.py
