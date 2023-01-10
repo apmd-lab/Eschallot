@@ -8,7 +8,7 @@ Optimization can be done by:
 
 **2. Gradient descent** (optimize boundary positions only with fixed materials and the number of layers)
 
-The needle optimization algorithm is a popular method in multilayer film design **[3-5]** can be conceptualized as **(a)** optimizing the boundary positions by gradient descent (*shape optimization*) and **(b)** optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (*topology optimization*).
+The needle optimization algorithm is a popular method in multilayer film design **[3-5]** and can be conceptualized as **(a)** optimizing the boundary positions by gradient descent (*shape optimization*) and **(b)** optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (*topology optimization*).
 
 ![](flowchart.png)
 
