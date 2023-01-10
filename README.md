@@ -6,18 +6,18 @@ Refer to this paper for the details.
 
 # Quickstart
 
-Compute efficiencies and the phase function: simulate_particle.py
+**Compute efficiencies and the phase function:** simulate_particle.py
 
-Run needle optimization: run_needle_optimization.py
+**Run needle optimization:** run_needle_optimization.py
 
-Run gradient descent: run_gradient_optimization.py
+**Run gradient descent:** run_gradient_optimization.py
 
 # Requirements
 
-NumPy
+- NumPy
 
-SciPy
+- SciPy
 
-Matplotlib
+- Matplotlib
 
-Numba
+- Numba
