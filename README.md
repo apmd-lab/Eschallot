@@ -34,7 +34,7 @@ Refer to this paper for more details.
 
 - To define a custom cost function, change the variables in 'radius_sweep'
 
-- To define a custom range for the initial particle radius, change the inputs to 'radius_sweep' (under if __name__ == '__main__')
+- To define a custom range for the initial particle radius, change the inputs to 'radius_sweep' (under "if __name__ == '__main__'")
 
 **Run gradient descent:** `run_gradient_optimization.py`
 
