@@ -53,3 +53,24 @@ def tmm_mie_jit_wrapper(lam, theta, phi, pol, r, n, pool=None):
                                                                                 eta_tilde)
     
     return Q_sca, Q_abs, Q_ext, p, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM, S1_mpE, S1_mpM, S2_mpE, S2_mpM
+
+if __name__ == '__main__':
+    # Variable setup code block
+    mat_profile = np.array(['Air','TiO2_Sarkar','SiO2_bulk','TiO2_Sarkar']) # Outer to inner
+    r_profile = np.array([400,200,100]) #in nm
+    lam = np.linspace(360, 830, 830 - 360 + 1)
+    theta = np.linspace(0, np.pi, 181)
+    phi = np.linspace(0, 2*np.pi, 361)
+    polarization = 45*np.pi/180
+    
+    # Create n
+    mat_type = list(set(mat_profile))
+    raw_wavelength, mat_dict = rmd.load_all(lam, 'n_k', mat_type)
+    
+    n = np.zeros((np.size(lam,0), np.size(mat_profile,0))).astype(complex)
+    count = 0
+    for mat in mat_profile:
+        n[:,count] = mat_dict[mat]
+        count += 1
+    
+    Qs_ref, Qa_ref, Qe_ref, pf_ref, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM = simulate(lam, theta, phi, polarization, r_profile, n)
