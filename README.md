@@ -1,4 +1,4 @@
-# Comprehensive Package for the Simulation and Optimization of Spherical Particles
+# Eschallot: Comprehensive Package for the Simulation and Optimization of Spherical Particles
 
 This package implements transfer matrix methods for Mie scattering of multi-shell particles **[1,2]**
 
