@@ -6,19 +6,26 @@ class ref_index:
     def __init__(self, filename, target_wvl=None):
         """ target_wvl: the wavelength points to be interpolated to """
 
-        with open(directory + "\\Material Data\\" + filename + '.txt', 'r') as f:
-            labels = f.readline()
-            line_count = 0
-            for line in f:
-                line_count += 1
-            f.seek(0)
-            f.readline()
-            self.raw = np.zeros((line_count, 3))
-            count = 0
-            for line in f:
-                temp_array = np.array([line.split()])
-                self.raw[count,:] = np.asfarray(temp_array, float)
-                count += 1
+        if os.path.exists(directory[:-5] + "/material_data/" + filename + '.txt'):
+            with open(directory[:-5] + "/material_data/" + filename + '.txt', 'r') as f:
+                labels = f.readline()
+                line_count = 0
+                for line in f:
+                    line_count += 1
+                f.seek(0)
+                f.readline()
+                self.raw = np.zeros((line_count, 3))
+                count = 0
+                for line in f:
+                    temp_array = np.array([line.split()])
+                    self.raw[count,:] = np.asfarray(temp_array, float)
+                    count += 1
+        elif os.path.exists(directory[:-5] + "/material_data/" + filename + '.npz'):
+            data = np.load(directory[:-5] + "/material_data/" + filename + '.npz')
+            self.raw = np.zeros((data['lam'].size, 3))
+            self.raw[:,0] = data['lam']
+            self.raw[:,1] = data['n']
+            self.raw[:,2] = data['k']
         if target_wvl is not None:
             new_n = np.interp(target_wvl, self.raw[:,0], self.raw[:,1])
             new_k = np.interp(target_wvl, self.raw[:,0], self.raw[:,2])
@@ -60,7 +67,7 @@ class ref_index:
 def load_all(target_wavelength, function, material=np.array(['all'])):
     raw_wavelength = {}
     mat_dict = {}
-    mat_directory = directory + "\\Material Data\\"
+    mat_directory = directory[:-5] + "/material_data/"
     if material[0] == 'all':
         mat_files = os.listdir(mat_directory)
         for filename in mat_files:
