@@ -66,6 +66,6 @@ def simulate(lam, theta, phi, r, n):
         else:
             break
     
-    np.savez(directory + "/debug", ksi=ksi, dksi=dksi, psi=psi, dpsi=dpsi, Q_sca=Q_sca, Q_abs=Q_abs, t_El=t_El, t_Ml=t_Ml, lmax=lmax)
+    #np.savez(directory + "/debug", ksi=ksi, dksi=dksi, psi=psi, dpsi=dpsi, Q_sca=Q_sca, Q_abs=Q_abs, t_El=t_El, t_Ml=t_Ml, lmax=lmax)
     
     return Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM, S1_mpE, S1_mpM, S2_mpE, S2_mpM

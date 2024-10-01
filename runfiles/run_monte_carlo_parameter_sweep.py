@@ -19,32 +19,30 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 status = MPI.Status()
 
-with np.load(directory + '/data/sweep_parameters.npz') as param_filename:
-    r_mean = param_filename['r_mean']
-    scale = param_filename['scale']
+with np.load(directory[:-9] + '/data/sweep_parameters.npz') as param_filename:
     thickness = param_filename['thickness']
     f_vol_tot = param_filename['f_vol_tot']
-    f_num = param_filename['f_num']
-    materials = param_filename['materials']
+    mat_particle = param_filename['mat_particle']
+    r_particle = param_filename['r_particle']
     index = param_filename['index']
+    wavelength = param_filename['wavelength']
+    identifier = param_filename['identifier']
 
 # Simulation Settings
-pht_per_wvl = 1e3 # number of photons (on average) to simulate for each sampled wavelength
-lam_step = 50 # wavelength sampling step size (in nm)
-lam1 = 300 # wavelength start (nm)
-lam2 = 2500 # wavelength end (nm)
-
-wvl = int((lam2 - lam1)/lam_step) + 1
+pht_per_wvl = 1e8 # number of photons (on average) to simulate for each sampled wavelength
 n_layer = 1 # number of layers in the film
 antireflective = 0 # assume antireflective coating on the top surface
 Lambertian_sub = 0 # assume the substrate is a Lambertian scatterer
 perfect_absorber = 0 # assume the substrate is a perfect absorber
-n_particle = 50 # number of particle radii to sample (if polydisperse); set to 1 if monodisperse
+n_particle = 1 # number of particle radii to sample (if polydisperse); set to 1 if monodisperse
 isotropic = 1 # set to 1 if particle is spherical (i.e. has the same angular scattering distribution regardless of the angle of incidence)
+single_scattering_approx = 1 # valid when f_vol_tot < 1% and k_ext*d_avg > 30
+                             # d_avg: average distance between particles ~= length of one side of a unit cube surrounding the particle
+                             #        = ((4*pi)/(3*f_vol))**(1/3)*r
+                             # REF: "Conditions of applicability of the single-scattering approximation" (2007)
 
-wavelength = np.linspace(lam1, lam2, wvl, endpoint=True)
 n_photon = wvl*pht_per_wvl
-wvl_for_polar_plots = np.array([550]) # wavelengths at which the polar reflection/transmission plots are drawn
+wvl_for_polar_plots = np.array([440,450,460]) # wavelengths at which the polar reflection/transmission plots are drawn
 angle_for_spectral_plots = np.array([[0,0]])*np.pi/180 # angles (azimuthal, polar) at which the spectral reflection/transmission plots are drawn
 polarization = 'random' # 'random', 'x', or 'y'
 
@@ -71,9 +69,10 @@ nu = np.linspace(0, 1, 201) # for even area spacing along theta
 theta_out = np.flip(np.arccos(2*nu[1:-1]-1))
 
 # Set Particle Dispersion Quantities
-pdf, r_list = pd.gamma_distribution(n_particle, f_num, r_mean*scale, scale)
-volume_pdf = pdf*r_list[np.newaxis,np.newaxis,:]**3
-f_vol = f_vol_tot[:,np.newaxis,np.newaxis]*volume_pdf/np.sum(volume_pdf, axis=(1, 2))[:,np.newaxis,np.newaxis]
+#pdf, r_list = pd.gamma_distribution(n_particle, f_num, r_mean*scale, scale)
+#volume_pdf = pdf*r_list[np.newaxis,np.newaxis,:]**3 # N_layer x N_type x n_particle
+#f_vol = f_vol_tot[:,np.newaxis,np.newaxis]*volume_pdf/np.sum(volume_pdf, axis=(1, 2))[:,np.newaxis,np.newaxis]
+f_vol = f_vol_tot[:,np.newaxis,np.newaxis]
 n_type = f_vol.shape[1]
 
 # Set Particle Geometry
@@ -81,16 +80,27 @@ config = {} # index: particle type; from out to in
 r_profile = {}
 for n_t in range(n_type):
     for p in range(n_particle):
-        config[n_t,p] = materials[n_t] # set the material of each particle type
-        r_profile[n_t,p] = np.array([r_list[p]])
-outer_radius = r_list.copy()
+        config[n_t,p] = mat_particle # set the material of each particle type
+        r_profile[n_t,p] = r_particle
+outer_radius = r_particle[0]
 
 density = np.zeros((n_layer, n_type, n_particle))
 for p in range(n_particle):
     density[:,:,p] = f_vol[:,:,p]/((4*np.pi*outer_radius[p]**3)/3)
 
+# Check Validity of the Single Scattering Approximation (if applicable)
+if single_scattering_approx:
+    for l in range(n_layer):
+        assert np.sum(f_vol[l,:,:]) < 0.01
+        
+        if np.sum(f_vol[l,:,:]) != 0:
+            r3_sum = 0
+            for p in range(n_particle):
+                r3_sum += outer_radius[p]**3
+            assert ((4*np.pi*r3_sum)/(3*np.sum(f_vol[l,:,:])))**(1/3) > 30
+
 # Compute Mie Scattering Quantities
-quo, rem = divmod(r_list.size, size)
+quo, rem = divmod(n_particle, size)
 data_size = np.array([quo + 1 if p < rem else quo for p in range(size)])
 data_disp = np.array([sum(data_size[:p]) for p in range(size+1)])
 f_vol_proc = f_vol[:,:,data_disp[rank]:data_disp[rank+1]]
@@ -103,7 +113,7 @@ for n_t in range(n_type):
 outer_radius_proc = outer_radius[data_disp[rank]:data_disp[rank+1]]
 
 # Load Material Refractive Index
-mat_profile = np.hstack((config_layer, materials))
+mat_profile = np.hstack((config_layer, mat_particle))
 mat_type = list(set(mat_profile))
 raw_wavelength, mat_dict = rmd.load_all(wavelength, 'n_k', mat_type)
 
@@ -114,8 +124,8 @@ C_abs_bulk_proc = np.zeros((n_layer, n_type, data_size[rank], wvl))
 diff_scat_CS_proc = np.zeros((n_layer, n_type, data_size[rank], 2, wvl, theta_out.size, phi_out.size))
 
 for l in range(n_layer+1):
-    if l != 0:
-        mat_ema = np.hstack((materials, config_layer[l]))
+    if l != 0 and not single_scattering_approx:
+        mat_ema = np.hstack((mat_particle, config_layer[l]))
         n_ema = np.zeros((wvl, mat_ema.size)).astype(complex)
         count = 0
         for mat in mat_ema:
@@ -133,7 +143,7 @@ for l in range(n_layer+1):
                 n[:,count] = mat_dict[mat]
                 count += 1
                 
-            if l != 0:
+            if l != 0 and not single_scattering_approx:
                 eps_eff = ema.multitype_particle_medium(wavelength, n_ema, f_vol_ema)
                 n[:,0] = np.sqrt(eps_eff)
         
@@ -147,8 +157,11 @@ for l in range(n_layer+1):
             else:
                 C_sca_bulk_proc[l-1,n_t,p,:] = (np.pi*outer_radius_proc[p]**2*Qs).flatten()
                 C_abs_bulk_proc[l-1,n_t,p,:] = (np.pi*outer_radius_proc[p]**2*Qa).flatten()
-                str_fact = strf.structure_factor(wavelength, np.array([0]), np.array([0]), theta_out, phi_out, f_vol_proc[l-1,n_t,p], n[:,0], np.array([outer_radius_proc[p]]), 1)
-                diff_scat_CS_proc[l-1,n_t,p,0,:,:,:] = pf*str_fact[:,0,0,:,:]
+                if not single_scattering_approx:
+                    str_fact = strf.structure_factor(wavelength, np.array([0]), np.array([0]), theta_out, phi_out, f_vol_proc[l-1,n_t,p], n[:,0], np.array([outer_radius_proc[p]]), 1)
+                    diff_scat_CS_proc[l-1,n_t,p,0,:,:,:] = pf*str_fact[:,0,0,:,:]
+                else:
+                    diff_scat_CS_proc[l-1,n_t,p,0,:,:,:] = pf
 
 data_size_temp = data_size*n_type*wvl
 data_disp_temp = np.array([sum(data_size_temp[:p]) for p in range(size)]).astype(np.float64)
@@ -181,13 +194,10 @@ diff_scat_CS = diff_scat_CS_temp.reshape(n_particle, n_layer, n_type, 2, wvl, th
 
 diff_scat_CS[:,:,:,1,:,:,:] = np.roll(diff_scat_CS[:,:,:,0,:,:,:], int(phi_out.size/4), axis=5)
 
-identifier = 'dual_particle_sweep'
 subgroup = 6 # head + procs (total number of cores allocated for this job must be a multiple of this number)
 
 if rank == 0:
-    if not os.path.isdir(directory + '/data'):
-        os.mkdir(directory + '/data')
-    np.savez(directory + '/data/Mie_data' + identifier, C_sca_surf=C_sca_surf, C_abs_surf=C_abs_surf, C_sca_bulk=C_sca_bulk, C_abs_bulk=C_abs_bulk,
+    np.savez(directory[:-9] + '/data/Mie_data' + identifier, C_sca_surf=C_sca_surf, C_abs_surf=C_abs_surf, C_sca_bulk=C_sca_bulk, C_abs_bulk=C_abs_bulk,
              diff_scat_CS=diff_scat_CS)
 
 # Sync All Processes
@@ -195,7 +205,7 @@ comm.Barrier()
 
 # Set Incidence Angles and Scattered Angle Resolutions
 theta_in_BSDF = np.linspace(0, 90, 2, endpoint=True)*np.pi/180
-nu = np.linspace(0, 1, 21) # for even area spacing along theta (number of angles must be odd to always include pi/2)
+nu = np.linspace(0, 1, 121) # for even area spacing along theta (number of angles must be odd to always include pi/2)
 theta_temp = np.flip(np.arccos(2*nu-1))
 theta_out_BRDF_edge = theta_temp[theta_temp >= np.pi/2]
 theta_out_BRDF_center = (theta_out_BRDF_edge[:-1] + theta_out_BRDF_edge[1:])/2
@@ -244,7 +254,7 @@ for th_in in range(theta_in_BSDF.size):
             transmit_angle_ball_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
             transmit_angle_diff_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
             for n in range(size//subgroup):
-                data = np.load(directory + "/data/" + identifier + "_MC_" + str(int(n*subgroup)) +".npz")
+                data = np.load(directory[:-9] + "/data/" + identifier + "_MC_" + str(int(n*subgroup)) +".npz")
                 I_tot = I_tot + data['I']
                 R_spec_tot = R_spec_tot + data['R_spec']
                 R_diff_tot = R_diff_tot + data['R_diff']
@@ -279,9 +289,7 @@ for th_in in range(theta_in_BSDF.size):
                 BTDF_diff[w,th_in,:,:] = transmit_angle_diff_tot[:,:,w]/I_tot[w]
 
 if rank == 0:
-    if not os.path.isdir(directory + '/data/param_sweep'):
-        os.mkdir(directory + '/data/param_sweep')
-    np.savez(directory + "/data/param_sweep/" + identifier + "_BRDF" + str(index), BRDF_spec=BRDF_spec, BRDF_diff=BRDF_diff, BTDF_ball=BTDF_ball, BTDF_diff=BTDF_diff,
+    np.savez(directory[:-9] + "/data/param_sweep/" + identifier + "_BRDF" + str(index), BRDF_spec=BRDF_spec, BRDF_diff=BRDF_diff, BTDF_ball=BTDF_ball, BTDF_diff=BTDF_diff,
              wavelength=wavelength, theta_in_BSDF=theta_in_BSDF, theta_out_BRDF=theta_out_BRDF_center, theta_out_BTDF=theta_out_BTDF_center, phi_out_BSDF=phi_out_BSDF,
              f_vol=f_vol, r_list=r_list, R_spec=R_spec_tot, R_diff=R_diff_tot, R_scat=R_scat_tot, T_ball=T_ball_tot, T_diff=T_diff_tot, T_scat=T_scat_tot, A_medium=A_medium_tot,
              A_particle=A_particle_tot, A_TIR=A_TIR_tot)
