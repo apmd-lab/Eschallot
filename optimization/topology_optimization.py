@@ -116,7 +116,7 @@ def refine_r(index,
     try:
         result = minimize(costfct.merit_fct, r0, args=(n, index, lam, Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, ml),
                           method='trust-constr', jac=costfct.jacobian, constraints=constr, bounds=bnd,
-                          options={'verbose': verbose, 'gtol': 1e-4, 'xtol': 1e-4, 'maxiter': 200})
+                          options={'verbose': verbose, 'gtol': 1e-8, 'xtol': 1e-8, 'maxiter': 1000})
     except:
         np.savez(directory[:-13] + "/debug/refine_r", index=index, r0=r0, n=n)
         assert False

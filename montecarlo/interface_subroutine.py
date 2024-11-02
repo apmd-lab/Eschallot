@@ -98,7 +98,7 @@ def interface_jit(n1, n2, coarse_roughness, downward, boundary, layer, layer_cha
         r12_TE = (n1*np.cos(th1) - n2*np.cos(th2))/(n1*np.cos(th1) + n2*np.cos(th2))
         r12_TM = (n1/np.cos(th1) - n2/np.cos(th2))/(n1/np.cos(th1) + n2/np.cos(th2))
         if photon_interface_T == 0: #1st incidence on boundary (polarization is known)
-            if photon_pol == 0:
+            if photon_pol == 1: # Note: phi_inc = 0 always and phi is defined w.r.t. the x-axis; therefore, x-pol light will have E//plane(xz) and y-pol light will have E perp to plane(xz)
                 r12 = r12_TE
             else:
                 r12 = r12_TM

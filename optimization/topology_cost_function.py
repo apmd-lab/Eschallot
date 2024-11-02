@@ -86,24 +86,43 @@ def jacobian(r,
                                                                                                    ml_init.tau_l,
                                                                                                    ml_init.eta_tilde)
     
-    jac = build_jacobian(Q_sca_con,
-                         Q_abs_con,
-                         Q_ext_con,
-                         p_con,
-                         diff_CS_con,
-                         Q_sca,
-                         Q_abs,
-                         Q_ext,
-                         p,
-                         dQ_sca,
-                         dQ_abs,
-                         dQ_ext,
-                         dp,
-                         d_diff_CS,
-                         r,
-                         lam,
-                         ml_init.theta,
-                         ml_init.phi)
+#    jac = build_jacobian(Q_sca_con,
+#                         Q_abs_con,
+#                         Q_ext_con,
+#                         p_con,
+#                         diff_CS_con,
+#                         Q_sca,
+#                         Q_abs,
+#                         Q_ext,
+#                         p,
+#                         dQ_sca,
+#                         dQ_abs,
+#                         dQ_ext,
+#                         dp,
+#                         d_diff_CS,
+#                         r,
+#                         lam,
+#                         ml_init.theta,
+#                         ml_init.phi)
+    
+    jac = build_jacobian_directional(Q_sca_con,
+                                     Q_abs_con,
+                                     Q_ext_con,
+                                     p_con,
+                                     diff_CS_con,
+                                     Q_sca,
+                                     Q_abs,
+                                     Q_ext,
+                                     p,
+                                     dQ_sca,
+                                     dQ_abs,
+                                     dQ_ext,
+                                     dp,
+                                     d_diff_CS,
+                                     r,
+                                     lam,
+                                     ml_init.theta,
+                                     ml_init.phi)
     
 #    mf1 = merit_fct(r-1e-6, n, index, lam, Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, ml_init)
 #    mf2 = merit_fct(r+1e-6, n, index, lam, Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, ml_init)
@@ -111,6 +130,7 @@ def jacobian(r,
 #
 #    np.savez(directory[:-13] + "/debug/jacobian", Q_sca=Q_sca, p=p, dQ_sca=dQ_sca, dp=dp, r=r, t_El=t_El, dt_El=dt_El, jac=jac, jac_fd=jac_fd, ksi=ml_init.ksi, psi=ml_init.psi, dksi=ml_init.dksi,
 #             dpsi=ml_init.dpsi, d2ksi=ml_init.d2ksi, d2psi=ml_init.d2psi, Q_abs=Q_abs, Q_ext=Q_ext, dQ_abs=dQ_abs, dQ_ext=dQ_ext, d_diff_CS=d_diff_CS, t_Ml=t_Ml, dt_Ml=dt_Ml)
+#    assert False
     
     return jac
 
@@ -159,6 +179,41 @@ def build_jacobian(Q_sca_con,
         
         jac[l] += np.sum(diff_CS_con[3,1,:,:,:]*d_diff_CS[:,:,:,l])
 
+    return jac
+
+@jit(nopython=True, cache=True)
+def build_jacobian_directional(Q_sca_con,
+                               Q_abs_con,
+                               Q_ext_con,
+                               p_con,
+                               diff_CS_con,
+                               Q_sca,
+                               Q_abs,
+                               Q_ext,
+                               p,
+                               dQ_sca,
+                               dQ_abs,
+                               dQ_ext,
+                               dp,
+                               d_diff_CS,
+                               r,
+                               lam,
+                               theta,
+                               phi,
+                               ):
+    
+    th_Fwd = 11
+    th0 = 291
+    th1 = 302
+    phi_tgt = np.array([0])
+    
+    jac = np.zeros(r.size)
+    for l in range(r.size):
+        denom = np.sum(p[0,th_Fwd:,:]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+        for i in range(phi_tgt.size):
+            jac[l] += -np.sum(dp[0,th0:th1,phi_tgt[i],l]*np.sin(theta[th0:th1])[:,np.newaxis])/denom\
+                      + np.sum(p[0,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[:,np.newaxis])/denom**2*np.sum(dp[0,th_Fwd:,:,l]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+    
     return jac
 
 def merit_fct(r,
@@ -211,19 +266,33 @@ def merit_fct(r,
                                                               ml_init.tau_l,
                                                               ml_init.eta_tilde)
     
-    res = build_residual(Q_sca_con,
-                         Q_abs_con,
-                         Q_ext_con,
-                         p_con,
-                         diff_CS_con,
-                         Q_sca,
-                         Q_abs,
-                         Q_ext,
-                         p,
-                         diff_CS,
-                         lam,
-                         ml_init.theta,
-                         ml_init.phi)
+#    res = build_residual(Q_sca_con,
+#                         Q_abs_con,
+#                         Q_ext_con,
+#                         p_con,
+#                         diff_CS_con,
+#                         Q_sca,
+#                         Q_abs,
+#                         Q_ext,
+#                         p,
+#                         diff_CS,
+#                         lam,
+#                         ml_init.theta,
+#                         ml_init.phi)
+    
+    res = build_residual_directional(Q_sca_con,
+                                     Q_abs_con,
+                                     Q_ext_con,
+                                     p_con,
+                                     diff_CS_con,
+                                     Q_sca,
+                                     Q_abs,
+                                     Q_ext,
+                                     p,
+                                     diff_CS,
+                                     lam,
+                                     ml_init.theta,
+                                     ml_init.phi)
 
     #np.savez(directory[:-13] + "/debug/merit_fct", Q_sca=Q_sca, p=p, t_El=t_El, r=r, res=res, Q_abs=Q_abs, Q_ext=Q_ext, diff_CS=diff_CS, t_Ml=t_Ml)
 
@@ -268,4 +337,30 @@ def build_residual(Q_sca_con,
     
     res += np.sum(diff_CS_con[3,1,:,:,:]*diff_CS)
 
+    return res
+
+@jit(nopython=True, cache=True)
+def build_residual_directional(Q_sca_con,
+                               Q_abs_con,
+                               Q_ext_con,
+                               p_con,
+                               diff_CS_con,
+                               Q_sca,
+                               Q_abs,
+                               Q_ext,
+                               p,
+                               diff_CS,
+                               lam,
+                               theta,
+                               phi):
+
+    th_Fwd = 11
+    th0 = 291
+    th1 = 302
+    phi_tgt = np.array([0])
+
+    res = 0
+    for i in range(phi_tgt.size):
+        res += -np.sum(p[0,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[:,np.newaxis])/np.sum(p[0,th_Fwd:,:]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+    
     return res

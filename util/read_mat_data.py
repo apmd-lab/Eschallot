@@ -26,6 +26,9 @@ class ref_index:
             self.raw[:,0] = data['lam']
             self.raw[:,1] = data['n']
             self.raw[:,2] = data['k']
+        else:
+            raise Exception('Nonexistent data file: ' + directory[:-5] + "/material_data/" + filename + '.txt or .npz')
+        
         if target_wvl is not None:
             new_n = np.interp(target_wvl, self.raw[:,0], self.raw[:,1])
             new_k = np.interp(target_wvl, self.raw[:,0], self.raw[:,2])

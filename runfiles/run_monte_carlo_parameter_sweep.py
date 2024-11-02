@@ -26,11 +26,17 @@ with np.load(directory[:-9] + '/data/sweep_parameters.npz') as param_filename:
     r_particle = param_filename['r_particle']
     index = param_filename['index']
     wavelength = param_filename['wavelength']
-    identifier = param_filename['identifier']
+    pht_per_wvl = param_filename['pht_per_wvl']
+    init_theta = param_filename['init_theta']
+    init_phi = param_filename['init_phi']
+    nu = param_filename['nu']
+    phi_in_BSDF = param_filename['phi_in_BSDF']
+    phi_out_BSDF = param_filename['phi_out_BSDF']
+    identifier = param_filename['identifier'][0]
 
 # Simulation Settings
-pht_per_wvl = 1e8 # number of photons (on average) to simulate for each sampled wavelength
-n_layer = 1 # number of layers in the film
+wvl = wavelength.size
+n_layer = 2 # number of layers in the film
 antireflective = 0 # assume antireflective coating on the top surface
 Lambertian_sub = 0 # assume the substrate is a Lambertian scatterer
 perfect_absorber = 0 # assume the substrate is a perfect absorber
@@ -42,12 +48,12 @@ single_scattering_approx = 1 # valid when f_vol_tot < 1% and k_ext*d_avg > 30
                              # REF: "Conditions of applicability of the single-scattering approximation" (2007)
 
 n_photon = wvl*pht_per_wvl
-wvl_for_polar_plots = np.array([440,450,460]) # wavelengths at which the polar reflection/transmission plots are drawn
+wvl_for_polar_plots = np.array([450]) # wavelengths at which the polar reflection/transmission plots are drawn
 angle_for_spectral_plots = np.array([[0,0]])*np.pi/180 # angles (azimuthal, polar) at which the spectral reflection/transmission plots are drawn
-polarization = 'random' # 'random', 'x', or 'y'
+polarization = 'x' # 'random', 'x', or 'y'
 
 # Film Configuration
-config_layer = np.array(['Air','PMMA','Air']) # from top(incident side) to bottom(exit side), including background media
+config_layer = np.array(['Air','SiO2_bulk','PMMA','Air']) # from top(incident side) to bottom(exit side), including background media
 mat_type = list(set(config_layer))
 raw_wavelength, mat_dict = rmd.load_all(wavelength, 'n_k', mat_type)
 RI = np.zeros((n_layer+2, wvl)).astype(complex)
@@ -59,14 +65,14 @@ for mat in config_layer:
 # Refer to Hwang et al. "Designing angle-independent structural colors using Monte Carlo simulations of multiple scattering", PNAS (2021).
 fine_roughness = 0
 coarse_roughness = 0
-layer_thickness = np.array([thickness]) # thickness of each layer (nm)
+layer_thickness = np.array([10000000,thickness]) # thickness of each layer (nm)
 
 # Phase Function (differential cross section) Computation Settings
 theta_inc = np.array([0])
 phi_inc = np.array([0])
-phi_out = np.linspace(0, 2*np.pi, 180, endpoint=False)
-nu = np.linspace(0, 1, 201) # for even area spacing along theta
-theta_out = np.flip(np.arccos(2*nu[1:-1]-1))
+phi_out = np.linspace(0, 2*np.pi, 360, endpoint=False)
+nu_pf = np.linspace(0, 1, 361) # for even area spacing along theta
+theta_out = np.flip(np.arccos(2*nu_pf[1:-1]-1))
 
 # Set Particle Dispersion Quantities
 #pdf, r_list = pd.gamma_distribution(n_particle, f_num, r_mean*scale, scale)
@@ -82,22 +88,19 @@ for n_t in range(n_type):
     for p in range(n_particle):
         config[n_t,p] = mat_particle # set the material of each particle type
         r_profile[n_t,p] = r_particle
-outer_radius = r_particle[0]
+outer_radius = np.array([r_particle[0]])
 
 density = np.zeros((n_layer, n_type, n_particle))
 for p in range(n_particle):
     density[:,:,p] = f_vol[:,:,p]/((4*np.pi*outer_radius[p]**3)/3)
 
 # Check Validity of the Single Scattering Approximation (if applicable)
-if single_scattering_approx:
-    for l in range(n_layer):
-        assert np.sum(f_vol[l,:,:]) < 0.01
-        
-        if np.sum(f_vol[l,:,:]) != 0:
-            r3_sum = 0
-            for p in range(n_particle):
-                r3_sum += outer_radius[p]**3
-            assert ((4*np.pi*r3_sum)/(3*np.sum(f_vol[l,:,:])))**(1/3) > 30
+#if single_scattering_approx:
+#    for l in range(n_layer):
+#        assert np.sum(f_vol[l,:,:]) < 0.01
+#        
+#        if np.sum(f_vol[l,:,:]) != 0:
+#            assert ((4*np.pi)/(3*np.sum(f_vol[l,:,:])))**(1/3)*np.min(outer_radius) > 30
 
 # Compute Mie Scattering Quantities
 quo, rem = divmod(n_particle, size)
@@ -197,16 +200,15 @@ diff_scat_CS[:,:,:,1,:,:,:] = np.roll(diff_scat_CS[:,:,:,0,:,:,:], int(phi_out.s
 subgroup = 6 # head + procs (total number of cores allocated for this job must be a multiple of this number)
 
 if rank == 0:
-    np.savez(directory[:-9] + '/data/Mie_data' + identifier, C_sca_surf=C_sca_surf, C_abs_surf=C_abs_surf, C_sca_bulk=C_sca_bulk, C_abs_bulk=C_abs_bulk,
+    np.savez(directory[:-9] + '/data/Mie_data_' + identifier, C_sca_surf=C_sca_surf, C_abs_surf=C_abs_surf, C_sca_bulk=C_sca_bulk, C_abs_bulk=C_abs_bulk,
              diff_scat_CS=diff_scat_CS)
 
 # Sync All Processes
 comm.Barrier()
 
 # Set Incidence Angles and Scattered Angle Resolutions
-theta_in_BSDF = np.linspace(0, 90, 2, endpoint=True)*np.pi/180
-nu = np.linspace(0, 1, 121) # for even area spacing along theta (number of angles must be odd to always include pi/2)
 theta_temp = np.flip(np.arccos(2*nu-1))
+theta_in_BSDF = theta_temp[theta_temp <= np.pi/2]
 theta_out_BRDF_edge = theta_temp[theta_temp >= np.pi/2]
 theta_out_BRDF_center = (theta_out_BRDF_edge[:-1] + theta_out_BRDF_edge[1:])/2
 theta_out_BRDF_center = np.insert(theta_out_BRDF_center, 0, np.pi/2)
@@ -215,81 +217,81 @@ theta_out_BTDF_edge = theta_temp[theta_temp <= np.pi/2]
 theta_out_BTDF_center = (theta_out_BTDF_edge[:-1] + theta_out_BTDF_edge[1:])/2
 theta_out_BTDF_center = np.insert(theta_out_BTDF_center, 0, 0)
 theta_out_BTDF_center = np.append(theta_out_BTDF_center, np.pi/2)
-phi_out_BSDF = np.linspace(0, 2*np.pi, 18, endpoint=False) # set azimuthal angle sampling points
 if rank == 0:
-    BRDF_spec = np.zeros((wvl, theta_in_BSDF.size, theta_out_BRDF_center.size, phi_out_BSDF.size))
-    BRDF_diff = np.zeros((wvl, theta_in_BSDF.size, theta_out_BRDF_center.size, phi_out_BSDF.size))
-    BTDF_ball = np.zeros((wvl, theta_in_BSDF.size, theta_out_BTDF_center.size, phi_out_BSDF.size))
-    BTDF_diff = np.zeros((wvl, theta_in_BSDF.size, theta_out_BTDF_center.size, phi_out_BSDF.size))
-for th_in in range(theta_in_BSDF.size):
-    if theta_in_BSDF[th_in] == np.pi/2 and rank == 0:
+    BRDF_spec = np.zeros((wvl, init_theta.size, init_phi.size, theta_out_BRDF_center.size, phi_out_BSDF.size))
+    BRDF_diff = np.zeros((wvl, init_theta.size, init_phi.size, theta_out_BRDF_center.size, phi_out_BSDF.size))
+    BTDF_ball = np.zeros((wvl, init_theta.size, init_phi.size, theta_out_BTDF_center.size, phi_out_BSDF.size))
+    BTDF_diff = np.zeros((wvl, init_theta.size, init_phi.size, theta_out_BTDF_center.size, phi_out_BSDF.size))
+for th_in in range(init_theta.size):
+    if init_theta[th_in] == np.pi/2 and rank == 0:
         BRDF_spec[:,th_in,0,0] = 1
     else:
-        t1 = time.time()
-        mc.monte_carlo(wavelength, theta_inc, theta_out, phi_inc, phi_out, theta_in_BSDF, theta_out_BRDF_edge, theta_out_BRDF_center,
-                       theta_out_BTDF_edge, theta_out_BTDF_center, phi_out_BSDF, wvl_for_polar_plots, angle_for_spectral_plots,
-                       layer_thickness, RI, density, C_sca_surf, C_abs_surf, C_sca_bulk, C_abs_bulk, diff_scat_CS,
-                       fine_roughness, coarse_roughness,
-                       antireflective=antireflective, Lambertian_sub=Lambertian_sub, perfect_absorber=perfect_absorber,
-                       isotropic=isotropic, init_angle=theta_in_BSDF[th_in], polarization=polarization).normal_hemispherical(directory, comm, size, rank,
-                                                                                                                             status, n_photon, identifier,
-                                                                                                                             subgroup)
-        t2 = time.time()
-        comm.Barrier()
-        if rank == 0:
-            I_tot = np.zeros(wvl)
-            R_spec_tot = np.zeros(wvl)
-            R_diff_tot = np.zeros(wvl)
-            R_scat_tot = np.zeros(wvl)
-            T_ball_tot = np.zeros(wvl)
-            T_diff_tot = np.zeros(wvl)
-            T_scat_tot = np.zeros(wvl)
-            A_medium_tot = np.zeros(wvl)
-            A_particle_tot = np.zeros(wvl)
-            A_TIR_tot = np.zeros(wvl)
-            
-            inc_angle_tot = np.zeros((theta_in_BSDF.size, wvl))
-            reflect_angle_spec_tot = np.zeros((theta_out_BRDF_center.size, phi_out_BSDF.size, wvl))
-            reflect_angle_diff_tot = np.zeros((theta_out_BRDF_center.size, phi_out_BSDF.size, wvl))
-            transmit_angle_ball_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
-            transmit_angle_diff_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
-            for n in range(size//subgroup):
-                data = np.load(directory[:-9] + "/data/" + identifier + "_MC_" + str(int(n*subgroup)) +".npz")
-                I_tot = I_tot + data['I']
-                R_spec_tot = R_spec_tot + data['R_spec']
-                R_diff_tot = R_diff_tot + data['R_diff']
-                R_scat_tot = R_scat_tot + data['R_scat']
-                T_ball_tot = T_ball_tot + data['T_ball']
-                T_diff_tot = T_diff_tot + data['T_diff']
-                T_scat_tot = T_scat_tot + data['T_scat']
-                A_medium_tot = A_medium_tot + data['A_medium']
-                A_particle_tot = A_particle_tot + data['A_particle']
-                A_TIR_tot = A_TIR_tot + data['A_TIR']
+        for ph_in in range(init_phi.size):
+            t1 = time.time()
+            mc.monte_carlo(wavelength, theta_inc, theta_out, phi_inc, phi_out, theta_in_BSDF, phi_in_BSDF, theta_out_BRDF_edge, theta_out_BRDF_center,
+                           theta_out_BTDF_edge, theta_out_BTDF_center, phi_out_BSDF, wvl_for_polar_plots, angle_for_spectral_plots,
+                           layer_thickness, RI, density, C_sca_surf, C_abs_surf, C_sca_bulk, C_abs_bulk, diff_scat_CS,
+                           fine_roughness, coarse_roughness,
+                           antireflective=antireflective, Lambertian_sub=Lambertian_sub, perfect_absorber=perfect_absorber,
+                           isotropic=isotropic, init_theta=init_theta[th_in], init_phi=init_phi[ph_in], polarization=polarization).normal_hemispherical(directory[:-9], comm, size, rank,
+                                                                                                                                                        status, n_photon, identifier,
+                                                                                                                                                        subgroup)
+            t2 = time.time()
+            comm.Barrier()
+            if rank == 0:
+                I_tot = np.zeros(wvl)
+                R_spec_tot = np.zeros(wvl)
+                R_diff_tot = np.zeros(wvl)
+                R_scat_tot = np.zeros(wvl)
+                T_ball_tot = np.zeros(wvl)
+                T_diff_tot = np.zeros(wvl)
+                T_scat_tot = np.zeros(wvl)
+                A_medium_tot = np.zeros(wvl)
+                A_particle_tot = np.zeros(wvl)
+                A_TIR_tot = np.zeros(wvl)
                 
-                inc_angle_tot = inc_angle_tot + data['inc_angle']
-                reflect_angle_spec_tot = reflect_angle_spec_tot + data['reflect_angle_spec']
-                reflect_angle_diff_tot = reflect_angle_diff_tot + data['reflect_angle_diff']
-                transmit_angle_ball_tot = transmit_angle_ball_tot + data['transmit_angle_ball']
-                transmit_angle_diff_tot = transmit_angle_diff_tot + data['transmit_angle_diff']
-            
-            R_spec_tot /= I_tot
-            R_diff_tot /= I_tot
-            R_scat_tot /= I_tot
-            T_ball_tot /= I_tot
-            T_diff_tot /= I_tot
-            T_scat_tot /= I_tot
-            A_medium_tot /= I_tot
-            A_particle_tot /= I_tot
-            A_TIR_tot /= I_tot
-            
-            for w in range(wvl):
-                BRDF_spec[w,th_in,:,:] = reflect_angle_spec_tot[:,:,w]/I_tot[w]
-                BRDF_diff[w,th_in,:,:] = reflect_angle_diff_tot[:,:,w]/I_tot[w]
-                BTDF_ball[w,th_in,:,:] = transmit_angle_ball_tot[:,:,w]/I_tot[w]
-                BTDF_diff[w,th_in,:,:] = transmit_angle_diff_tot[:,:,w]/I_tot[w]
+                inc_angle_tot = np.zeros((theta_in_BSDF.size, phi_in_BSDF.size, wvl))
+                reflect_angle_spec_tot = np.zeros((theta_out_BRDF_center.size, phi_out_BSDF.size, wvl))
+                reflect_angle_diff_tot = np.zeros((theta_out_BRDF_center.size, phi_out_BSDF.size, wvl))
+                transmit_angle_ball_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
+                transmit_angle_diff_tot = np.zeros((theta_out_BTDF_center.size, phi_out_BSDF.size, wvl))
+                for n in range(size//subgroup):
+                    data = np.load(directory[:-9] + "/data/" + identifier + "_MC_" + str(int(n*subgroup)) +".npz")
+                    I_tot = I_tot + data['I']
+                    R_spec_tot = R_spec_tot + data['R_spec']
+                    R_diff_tot = R_diff_tot + data['R_diff']
+                    R_scat_tot = R_scat_tot + data['R_scat']
+                    T_ball_tot = T_ball_tot + data['T_ball']
+                    T_diff_tot = T_diff_tot + data['T_diff']
+                    T_scat_tot = T_scat_tot + data['T_scat']
+                    A_medium_tot = A_medium_tot + data['A_medium']
+                    A_particle_tot = A_particle_tot + data['A_particle']
+                    A_TIR_tot = A_TIR_tot + data['A_TIR']
+                    
+                    inc_angle_tot = inc_angle_tot + data['inc_angle']
+                    reflect_angle_spec_tot = reflect_angle_spec_tot + data['reflect_angle_spec']
+                    reflect_angle_diff_tot = reflect_angle_diff_tot + data['reflect_angle_diff']
+                    transmit_angle_ball_tot = transmit_angle_ball_tot + data['transmit_angle_ball']
+                    transmit_angle_diff_tot = transmit_angle_diff_tot + data['transmit_angle_diff']
+                
+                R_spec_tot /= I_tot
+                R_diff_tot /= I_tot
+                R_scat_tot /= I_tot
+                T_ball_tot /= I_tot
+                T_diff_tot /= I_tot
+                T_scat_tot /= I_tot
+                A_medium_tot /= I_tot
+                A_particle_tot /= I_tot
+                A_TIR_tot /= I_tot
+                
+                for w in range(wvl):
+                    BRDF_spec[w,th_in,ph_in,:,:] = reflect_angle_spec_tot[:,:,w]/I_tot[w]
+                    BRDF_diff[w,th_in,ph_in,:,:] = reflect_angle_diff_tot[:,:,w]/I_tot[w]
+                    BTDF_ball[w,th_in,ph_in,:,:] = transmit_angle_ball_tot[:,:,w]/I_tot[w]
+                    BTDF_diff[w,th_in,ph_in,:,:] = transmit_angle_diff_tot[:,:,w]/I_tot[w]
 
 if rank == 0:
-    np.savez(directory[:-9] + "/data/param_sweep/" + identifier + "_BRDF" + str(index), BRDF_spec=BRDF_spec, BRDF_diff=BRDF_diff, BTDF_ball=BTDF_ball, BTDF_diff=BTDF_diff,
+    np.savez(directory[:-9] + "/data/param_sweep_" + identifier + "_BSDF" + str(index), BRDF_spec=BRDF_spec, BRDF_diff=BRDF_diff, BTDF_ball=BTDF_ball, BTDF_diff=BTDF_diff,
              wavelength=wavelength, theta_in_BSDF=theta_in_BSDF, theta_out_BRDF=theta_out_BRDF_center, theta_out_BTDF=theta_out_BTDF_center, phi_out_BSDF=phi_out_BSDF,
-             f_vol=f_vol, r_list=r_list, R_spec=R_spec_tot, R_diff=R_diff_tot, R_scat=R_scat_tot, T_ball=T_ball_tot, T_diff=T_diff_tot, T_scat=T_scat_tot, A_medium=A_medium_tot,
+             f_vol=f_vol, R_spec=R_spec_tot, R_diff=R_diff_tot, R_scat=R_scat_tot, T_ball=T_ball_tot, T_diff=T_diff_tot, T_scat=T_scat_tot, A_medium=A_medium_tot,
              A_particle=A_particle_tot, A_TIR=A_TIR_tot)

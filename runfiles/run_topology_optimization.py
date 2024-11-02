@@ -25,7 +25,7 @@ def radius_sweep(identifier, r_min, r_max, N_sweep, d_low, max_layers):
     mat_profile = np.array(['PMMA','TiO2_Sarkar']) # Outer(including embedding medium) to inner
     mat_needle = np.array(['SiO2_bulk','TiO2_Sarkar']) # 'TiO2_Sarkar','Au_JC','Si_Schinke','Ag_palik'
     lam_cost = np.array([450])
-    theta_cost = np.linspace(0, 180, 91)*np.pi/180 # 0: forward, 180: backward
+    theta_cost = np.linspace(0, 180, 361)*np.pi/180 # 0: forward, 180: backward
     phi_cost = np.array([0,90])*np.pi/180
     lam_plot = np.linspace(440, 460, 11)
     theta_plot = np.linspace(0, 180, 361)*np.pi/180 # 0: forward, 180: backward
@@ -44,7 +44,7 @@ def radius_sweep(identifier, r_min, r_max, N_sweep, d_low, max_layers):
         count += 1
     
     # 1st index: 0: equality, 1: lower than, 2: greater than, 3: weights only (non-least-squares/no target value)
-    # 2nd index: conditions for each angle of incidence
+    # 2nd index: 0: target value, 1: weight
     Q_sca_con = np.zeros((4, 2, lam_cost.size))
     Q_abs_con = np.zeros((4, 2, lam_cost.size))
     Q_ext_con = np.zeros((4, 2, lam_cost.size))
@@ -52,9 +52,9 @@ def radius_sweep(identifier, r_min, r_max, N_sweep, d_low, max_layers):
     diff_CS_con = np.zeros((4, 2, lam_cost.size, theta_cost.size, phi_cost.size))
     
     # Scattering Efficiency
-    Q_sca_con[2,0,0] = 0.1
+    Q_sca_con[2,0,0] = 0.2
     #------------------------------
-    Q_sca_con[2,1,0] = 10
+    Q_sca_con[2,1,0] = 100
     
     # Absorption Efficiency
     # Q_abs_con[0,:190] = 0
@@ -67,12 +67,12 @@ def radius_sweep(identifier, r_min, r_max, N_sweep, d_low, max_layers):
     # Q_ext_con[0,:] = 0
     
     # Phase Function
-    p_con[0,0,0,1:32,0] = 0 # 0deg
-    p_con[0,0,0,32,0] = 10 # 160deg
-    p_con[0,0,0,33:,0] = 0
-    p_con[0,0,0,1:,1] = 0
+    p_con[0,0,0,:80,0] = 0 # 0deg
+    p_con[0,0,0,80,0] = 10 # 160deg
+    p_con[0,0,0,81:,0] = 0
+    p_con[0,0,0,:,1] = 0
     #------------------------------
-    p_con[0,1,0,1:,:] = 1
+    p_con[0,1,0,:,:] = np.sin(theta_cost)[np.newaxis,:,np.newaxis]
     
     # Differential Scattering Cross Section
     # diff_CS_con[3,1,:,:,:] = 0
@@ -304,16 +304,17 @@ def radius_sweep(identifier, r_min, r_max, N_sweep, d_low, max_layers):
         cost = cost[filter_mask]
         
         # Sort from Best to Worst
+        cutoff = 10
         cost_sort = np.argsort(cost)
-        cost = cost[cost_sort]
-        r_save = r_save[cost_sort,:]
-        n_save = n_save[cost_sort,:,:]
-        Q_sca = Q_sca[cost_sort,:]
-        Q_abs = Q_abs[cost_sort,:]
-        Q_ext = Q_ext[cost_sort,:]
-        p = p[cost_sort,:,:,:]
-        diff_CS = diff_CS[cost_sort,:,:,:]
-        N_layer = N_layer[cost_sort]
+        cost = cost[cost_sort][:cutoff]
+        r_save = r_save[cost_sort,:][:cutoff,:]
+        n_save = n_save[cost_sort,:,:][:cutoff,:,:]
+        Q_sca = Q_sca[cost_sort,:][:cutoff,:]
+        Q_abs = Q_abs[cost_sort,:][:cutoff,:]
+        Q_ext = Q_ext[cost_sort,:][:cutoff,:]
+        p = p[cost_sort,:,:,:][:cutoff,:,:,:]
+        diff_CS = diff_CS[cost_sort,:,:,:][:cutoff,:,:,:]
+        N_layer = N_layer[cost_sort][:cutoff]
             
         np.savez(directory[:-9] + '/results/topopt_result_data_' + identifier, r=r_save, n=n_save,
                  Q_sca=Q_sca, Q_abs=Q_abs, Q_ext=Q_ext, p=p, diff_CS=diff_CS, N_layer=N_layer,
@@ -330,7 +331,7 @@ if __name__ == '__main__':
     comm.barrier()
 
     T1 = time.time()
-    radius_sweep(identifier='theta160_phi0_lambda450_rmax1000', r_min=10, r_max=1000, N_sweep=991, d_low=5, max_layers=None)
+    radius_sweep(identifier='theta148_phi0_lambda450_rmax3500_dtheta5_Bwd', r_min=10, r_max=3500, N_sweep=3491, d_low=5, max_layers=None)
     T2 = time.time()
     if comm.rank == 0:
         print('\nTotal time: ' + str(T2 - T1))

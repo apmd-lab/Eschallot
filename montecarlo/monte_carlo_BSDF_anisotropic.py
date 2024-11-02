@@ -23,17 +23,18 @@ if __name__ == '__main__':
     status = MPI.Status()
 
 class photon:
-    def __init__(self, layer_number, wavelength, inc_angle, z_inc, polarization):
+    def __init__(self, layer_number, wavelength, theta_inc, phi_inc, z_inc, polarization):
         self.weight = 1 #'percentage' of photon left after absorption by matrix
         self.index = np.random.randint(0, np.size(wavelength)) #index of the photon's wavelength
         self.wavelength = wavelength[self.index]
-        if inc_angle == 0: #Normal incidence
-            self.theta_inc = 0
-        elif inc_angle == -1: #Random incidence
+        if theta_inc == -1: #Random incidence
             self.theta_inc = np.pi/2*np.random.rand()
         else: #Incidence at specific angle
-            self.theta_inc = inc_angle
-        self.phi_inc = 0
+            self.theta_inc = theta_inc
+        if phi_inc == -1: #Random incidence
+            self.phi_inc = 2*np.pi*np.random.rand()
+        else:
+            self.phi_inc = phi_inc
         if polarization == 'random':
             self.pol = np.random.randint(0, 2) #Polarization (only for 1st interface); 0: TE, 1: TM
         elif polarization == 'x':
@@ -70,16 +71,17 @@ class photon:
         self.z_exit = 0
 
 class monte_carlo:
-    def __init__(self, wavelength, theta_inc, theta_out, phi_inc, phi_out, theta_in_BSDF, theta_out_BRDF_edge, theta_out_BRDF_center,
+    def __init__(self, wavelength, theta_inc, theta_out, phi_inc, phi_out, theta_in_BSDF, phi_in_BSDF, theta_out_BRDF_edge, theta_out_BRDF_center,
                  theta_out_BTDF_edge, theta_out_BTDF_center, phi_out_BSDF, wvl_for_polar_plots, angle_for_spectral_plots,
                  layer_thickness, RI, density, C_sca_surf, C_abs_surf, C_sca_bulk, C_abs_bulk, diff_scat_CS,
-                 fine_roughness=0, coarse_roughness=0, antireflective=0, Lambertian_sub=0, perfect_absorber=0, isotropic=0, init_angle=0, polarization='random'):
+                 fine_roughness=0, coarse_roughness=0, antireflective=0, Lambertian_sub=0, perfect_absorber=0, isotropic=0, init_theta=0, init_phi=0, polarization='random'):
         """ wavelength: np.array of possible wavelengths (nm)
             theta_inc: np.array of polar angles of incidence used for the computation of the differential scattering cross section (radians)
             theta_out: np.array of polar scattering angles used for the computation of the differential scattering cross section (radians)
             phi_inc: np.array of azimuthal angles of incidence used for the computation of the differential scattering cross section (radians)
             phi_out: np.array of azimuthal scattering angles used for the computation of the differential scattering cross section (radians)
             theta_in_BSDF: np.array of polar angles of incidence on the film in the range [0, pi/2]
+            phi_in_BSDF: np.array of azimuthal angles of incidence on the film in the range [0, 2*pi]
             theta_out_BRDF_edge: np.array of polar angles of exit on the side of incidence in the range [pi/2, pi]
             theta_out_BRDF_center: np.array of polar angles at the center of each segment defined by theta_out_BRDF_edge
             theta_out_BTDF_edge: np.array of polar angles of exit on the transmission side in the range [0, pi/2]
@@ -110,7 +112,8 @@ class monte_carlo:
             Lambertian_sub: assume a Lambertian reflector as the substrate
             perfect_absorber: assume the substrate is perfectly absorbing
             isotropic: particle scattering response is independent of the angle of incidence (ex. particle is spherical)
-            init_angle: polar angle of incidence (-1 if random incidence) (radians)
+            init_theta: polar angle of incidence (-1 if random incidence) (radians)
+            init_phi: azimuthal angle of incidence (-1 if random incidence) (radians)
             polarization: polarization of incident light ('x', 'y', or 'random') """
         
         self.wavelength = wavelength
@@ -119,6 +122,7 @@ class monte_carlo:
         self.phi_inc = phi_inc
         self.phi_out = phi_out
         self.theta_in_BSDF = theta_in_BSDF
+        self.phi_in_BSDF = phi_in_BSDF
         self.theta_out_BRDF_edge = theta_out_BRDF_edge
         self.theta_out_BRDF_center = theta_out_BRDF_center
         self.theta_out_BTDF_edge = theta_out_BTDF_edge
@@ -156,15 +160,9 @@ class monte_carlo:
         self.Lambertian_sub = Lambertian_sub
         self.perfect_absorber = perfect_absorber
         self.isotropic = isotropic
-        self.init_angle = init_angle
+        self.init_theta = init_theta
+        self.init_phi = init_phi
         self.polarization = polarization
-
-        if not os.path.isdir(directory + '/plots'):
-            os.mkdir(directory + '/plots')
-        if not os.path.isdir(directory + '/logs'):
-            os.mkdir(directory + '/logs')
-        if not os.path.isdir(directory + '/data'):
-            os.mkdir(directory + '/data')
     
     def interface(self, photon):
         """ this function only updates the photon's propagation angle
@@ -377,7 +375,10 @@ class monte_carlo:
                                   [0,0,1]])
                 v_sca = Rot_z @ Rot_y @ v_temp
                 
-                theta_new = np.arccos(-v_sca[2])
+                if np.abs(v_sca[2]) > 1 and np.abs(v_sca[2]) < 1 + 1e-3:
+                    theta_new = np.arccos(-np.sign(v_sca[2]))
+                else:
+                    theta_new = np.arccos(-v_sca[2])
                     
                 if theta_new == 0:
                     photon.current_phi = 0
@@ -403,7 +404,7 @@ class monte_carlo:
             
         return next_layer != photon.current_layer
     
-    def normal_hemispherical(self, directory, comm, size, rank, status, num_photons, identifier, subgroup):
+    def normal_hemispherical(self, directory_output, comm, size, rank, status, num_photons, identifier, subgroup):
         """ Formatting of photon_state:
             index   0                       1                     2                                    3
             value   initial index of wvl    final index of wvl    state of photon                      weight of photon
@@ -411,8 +412,8 @@ class monte_carlo:
                                                                    4:R_scat, 5:T_scat, 6:A_PL, 7:R_PL,
                                                                    8:T_PL)
             
-                    4                    5                     6                          7
-                    angle of incidence   polar angle of exit   azimuthal angle of exit    scattering count
+                    4                          5                              6                     7                          8
+                    polar angle of incidence   azimuthal angle of incidence   polar angle of exit   azimuthal angle of exit    scattering count
         """
         if rank == 0:
             quo, rem = divmod(num_photons, int(size/subgroup))
@@ -439,16 +440,16 @@ class monte_carlo:
         T_scat = np.zeros(self.wvl)
         Ns = np.zeros(self.wvl)
     
-        inc_angle = np.zeros((self.theta_in_BSDF.size, self.wvl))
+        inc_angle = np.zeros((self.theta_in_BSDF.size, self.phi_in_BSDF.size, self.wvl))
         reflect_angle_spec = np.zeros((self.theta_out_BRDF_center.size, self.phi_out_BSDF.size, self.wvl))
         reflect_angle_diff = np.zeros((self.theta_out_BRDF_center.size, self.phi_out_BSDF.size, self.wvl))
         transmit_angle_ball = np.zeros((self.theta_out_BTDF_center.size, self.phi_out_BSDF.size, self.wvl))
         transmit_angle_diff = np.zeros((self.theta_out_BTDF_center.size, self.phi_out_BSDF.size, self.wvl))
 
         if int(rank % subgroup) == 0: #only on head processes
-            with open(directory + "/logs/" + identifier + "_MC_log_head" + str(rank) + ".txt", 'w') as f:
+            with open(directory_output + "/logs/" + identifier + "_MC_log_head" + str(rank) + ".txt", 'w') as f:
                 f.write("Monte Carlo Simulation (MPI_ver) Log File -- Head Process\n")
-                f.write("Incidence Angle: %f\n" %(self.init_angle*180/np.pi))
+                f.write("Incidence Angle: theta = %f, phi = %f\n" %(self.init_theta*180/np.pi, self.init_phi*180/np.pi))
 
             count = 0
             num = data_disp[rank//subgroup]
@@ -464,7 +465,7 @@ class monte_carlo:
                 comm.send(cmd, dest=(rank//subgroup)*subgroup+count, tag=num%1e4)
             
             while True:
-                photon_state = np.zeros(8).astype(np.float64)
+                photon_state = np.zeros(9).astype(np.float64)
                 req = comm.Irecv(photon_state, source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG)
                 req.wait(status)
 
@@ -474,7 +475,7 @@ class monte_carlo:
                 
                 quo, rem = divmod(num-data_disp[rank//subgroup], int((num_end-data_disp[rank//subgroup])/100))
                 if rem == 0:
-                    with open(directory + "/logs/" + identifier + "_MC_log_head" + str(rank) + ".txt", 'a') as f:
+                    with open(directory_output + "/logs/" + identifier + "_MC_log_head" + str(rank) + ".txt", 'a') as f:
                         f.write("%f percent complete\n" % (quo))
                     
                     N_plots = 6 + self.wvl_for_polar_plots.size + self.angle_for_spectral_plots.size
@@ -497,7 +498,7 @@ class monte_carlo:
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Reflectance')
                         ax.legend()
-                        plt.savefig(directory + '/plots/' + identifier + '_R_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_R_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     if rank == rank_for_plots[1] and self.wavelength.size > 1:
@@ -511,7 +512,7 @@ class monte_carlo:
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Transmittance')
                         ax.legend()
-                        plt.savefig(directory + '/plots/' + identifier + '_T_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_T_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     if rank == rank_for_plots[2] and self.wavelength.size > 1:
@@ -525,7 +526,7 @@ class monte_carlo:
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Absorption')
                         ax.legend()
-                        plt.savefig(directory + '/plots/' + identifier + '_A_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_A_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     if rank == rank_for_plots[3] and self.wavelength.size > 1:
@@ -534,7 +535,7 @@ class monte_carlo:
                         ax.plot(self.wavelength, Ns/I, linewidth=1, color='teal', label='N_scatter')
                         ax.set_xlabel('Wavelength (nm)')
                         ax.legend()
-                        plt.savefig(directory + '/plots/' + identifier + '_N_scatter_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_N_scatter_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     if rank == rank_for_plots[4] and self.wavelength.size > 1:
@@ -558,7 +559,7 @@ class monte_carlo:
                         ax[0].set_ylabel('Polar Exit Angle (deg.)')
                         ax[0].set_title('Specular Reflection')
                         ax[1].set_title('Ballistic Transmission')
-                        plt.savefig(directory + '/plots/' + identifier + '_Angular_specR_ballT_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_Angular_specR_ballT_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     if rank == rank_for_plots[5] and self.wavelength.size > 1:
@@ -582,7 +583,7 @@ class monte_carlo:
                         ax[0].set_ylabel('Polar Exit Angle (deg.)')
                         ax[0].set_title('Diffuse Reflection')
                         ax[1].set_title('Diffuse Transmission')
-                        plt.savefig(directory + '/plots/' + identifier + '_Angular_diffRT_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                        plt.savefig(directory_output + '/plots/' + identifier + '_Angular_diffRT_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
                     # Full Angle Distribution at Specific Wavelengths
@@ -611,7 +612,8 @@ class monte_carlo:
                             ax[1].set_ylim(0, 90)
                             ax[0].set_title('Specular Reflection @ ' + str(np.round(self.wavelength[wvl_index])))
                             ax[1].set_title('Ballistic Transmission @ ' + str(np.round(self.wavelength[wvl_index])))
-                            plt.savefig(directory + '/plots/' + identifier + '_Exit_angle_distribution_wvl' + str(int(self.wavelength[wvl_index])) + '_spec_ball_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                            plt.savefig(directory_output + '/plots/' + identifier + '_Exit_angle_distribution_wvl' + str(int(self.wavelength[wvl_index])) + '_spec_ball_inc_angle_'\
+                                        + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                             plt.close()
                     
                             # Scattered Photons
@@ -636,7 +638,8 @@ class monte_carlo:
                             ax[1].set_ylim(0, 90)
                             ax[0].set_title('Diffuse Reflection @ ' + str(np.round(self.wavelength[wvl_index])))
                             ax[1].set_title('Diffuse Transmission @ ' + str(np.round(self.wavelength[wvl_index])))
-                            plt.savefig(directory + '/plots/' + identifier + '_Exit_angle_distribution_wvl' + str(int(self.wavelength[wvl_index])) + '_diff_inc_angle_' + str(int(self.init_angle*180/np.pi)))
+                            plt.savefig(directory_output + '/plots/' + identifier + '_Exit_angle_distribution_wvl' + str(int(self.wavelength[wvl_index])) + '_diff_inc_angle_'\
+                                        + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                             plt.close()
                     
                     # Spectra at Specific Angles
@@ -652,7 +655,8 @@ class monte_carlo:
                                 ax.set_xlabel('Wavelength (nm)')
                                 ax.set_title('Angular Transmission @ theta: ' + str(int(self.theta_out_BTDF_center[th_index]*180/np.pi)) + ' phi: ' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
                                 ax.legend()
-                                plt.savefig(directory + '/plots/' + identifier + '_Angular_transmission_spectrum_th' + str(int(self.theta_out_BTDF_center[th_index]*180/np.pi)) + '_ph' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
+                                plt.savefig(directory_output + '/plots/' + identifier + '_Angular_transmission_spectrum_th' + str(int(self.theta_out_BTDF_center[th_index]*180/np.pi))\
+                                            + '_ph' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
                                 plt.close()
                             else:
                                 th_index = np.argmin(np.abs(self.theta_out_BRDF_center - self.angle_for_spectral_plots[n_angle,0]))
@@ -662,103 +666,120 @@ class monte_carlo:
                                 ax.set_xlabel('Wavelength (nm)')
                                 ax.set_title('Angular Reflection @ theta: ' + str(int(self.theta_out_BRDF_center[th_index]*180/np.pi)) + ' phi: ' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
                                 ax.legend()
-                                plt.savefig(directory + '/plots/' + identifier + '_Angular_reflection_spectrum_th' + str(int(self.theta_out_BRDF_center[th_index]*180/np.pi)) + '_ph' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
+                                plt.savefig(directory_output + '/plots/' + identifier + '_Angular_reflection_spectrum_th' + str(int(self.theta_out_BRDF_center[th_index]*180/np.pi))\
+                                            + '_ph' + str(int(self.phi_out_BSDF[ph_index]*180/np.pi)))
                                 plt.close()
 
                 req = comm.isend(cmd, dest=status.Get_source(), tag=num%1e4)
                 req.wait()
 
+                # Incidence Data Collection
                 I[int(photon_state[0])] += 1
                 Ns[int(photon_state[0])] += photon_state[7]
-                if photon_state[4] < 0:
-                    photon_state[4] *= -1
-                elif photon_state[4] > np.pi:
-                    photon_state[4] = 2*np.pi - photon_state[4]
+                if photon_state[5] == 0:
+                    photon_state[5] = 2*np.pi
                 for t in range(self.theta_in_BSDF.size-1):
                     if photon_state[4] >= self.theta_in_BSDF[t] and photon_state[4] < self.theta_in_BSDF[t+1]:
-                        if np.abs(photon_state[4] - self.theta_in_BSDF[t]) < np.abs(photon_state[4] - self.theta_in_BSDF[t+1]):
-                            inc_angle[t,int(photon_state[0])] += 1
-                        else:
-                            inc_angle[t+1,int(photon_state[0])] += 1
+                        th_ind = t + 1
                         break
+                for n_p in range(self.phi_in_BSDF.size):
+                    if n_p != self.phi_in_BSDF.size - 1:
+                        if photon_state[5] > self.phi_in_BSDF[n_p] and photon_state[5] <= self.phi_in_BSDF[n_p+1]:
+                            ph_ind = np.array([n_p,n_p+1])
+                            ph_proportions = np.array([np.abs(photon_state[5] - self.phi_in_BSDF[n_p+1]),np.abs(photon_state[5] - self.phi_in_BSDF[n_p])])\
+                                             /np.abs(self.phi_in_BSDF[n_p+1] - self.phi_in_BSDF[n_p])
+                            break
+                    else:
+                        if photon_state[5] > self.phi_in_BSDF[n_p] and photon_state[5] <= 2*np.pi:
+                            ph_ind = np.array([n_p,0])
+                            ph_proportions = np.array([np.abs(photon_state[5] - 2*np.pi),np.abs(photon_state[5] - self.phi_in_BSDF[n_p])])\
+                                             /np.abs(2*np.pi - self.phi_in_BSDF[n_p])
+                            break
+                inc_angle[th_ind,ph_ind,int(photon_state[0])] += ph_proportions
+                
+                # Reflectance Data Collection
                 if photon_state[2] == 0:
-                    if photon_state[7] == 0:
+                    if photon_state[8] == 0:
                         R_spec[int(photon_state[0])] += photon_state[3]
                     else:
                         R_diff[int(photon_state[0])] += photon_state[3]
                     A_medium[int(photon_state[0])] += 1 - photon_state[3]
-                    if photon_state[5] < 0:
-                        photon_state[5] *= -1
-                    elif photon_state[5] > np.pi:
-                        photon_state[5] = 2*np.pi - photon_state[5]
+                    if photon_state[6] < 0:
+                        photon_state[6] *= -1
+                    elif photon_state[6] > np.pi:
+                        photon_state[6] = 2*np.pi - photon_state[6]
                     for t in range(1, self.theta_out_BRDF_edge.size):
-                        if photon_state[5] > self.theta_out_BRDF_edge[t-1] and photon_state[5] <= self.theta_out_BRDF_edge[t]:
+                        if photon_state[6] > self.theta_out_BRDF_edge[t-1] and photon_state[6] <= self.theta_out_BRDF_edge[t]:
                             th_ind = t
                             break
-                    if photon_state[6] <= 0:
-                        while photon_state[6] <= 0:
-                            photon_state[6] += 2*np.pi
-                    elif photon_state[6] > 2*np.pi:
-                        while photon_state[6] > 2*np.pi:
-                            photon_state[6] -= 2*np.pi
+                    if photon_state[7] <= 0:
+                        while photon_state[7] <= 0:
+                            photon_state[7] += 2*np.pi
+                    elif photon_state[7] > 2*np.pi:
+                        while photon_state[7] > 2*np.pi:
+                            photon_state[7] -= 2*np.pi
                     for n_p in range(self.phi_out_BSDF.size):
                         if n_p != self.phi_out_BSDF.size - 1:
-                            if photon_state[6] > self.phi_out_BSDF[n_p] and photon_state[6] <= self.phi_out_BSDF[n_p+1]:
+                            if photon_state[7] > self.phi_out_BSDF[n_p] and photon_state[7] <= self.phi_out_BSDF[n_p+1]:
                                 ph_ind = np.array([n_p,n_p+1])
-                                ph_proportions = np.array([np.abs(photon_state[6] - self.phi_out_BSDF[n_p+1]),np.abs(photon_state[6] - self.phi_out_BSDF[n_p])])\
+                                ph_proportions = np.array([np.abs(photon_state[7] - self.phi_out_BSDF[n_p+1]),np.abs(photon_state[7] - self.phi_out_BSDF[n_p])])\
                                                  /np.abs(self.phi_out_BSDF[n_p+1] - self.phi_out_BSDF[n_p])
                                 break
                         else:
-                            if photon_state[6] > self.phi_out_BSDF[n_p] and photon_state[6] <= 2*np.pi:
+                            if photon_state[7] > self.phi_out_BSDF[n_p] and photon_state[7] <= 2*np.pi:
                                 ph_ind = np.array([n_p,0])
-                                ph_proportions = np.array([np.abs(photon_state[6] - 2*np.pi),np.abs(photon_state[6] - self.phi_out_BSDF[n_p])])\
+                                ph_proportions = np.array([np.abs(photon_state[7] - 2*np.pi),np.abs(photon_state[7] - self.phi_out_BSDF[n_p])])\
                                                  /np.abs(2*np.pi - self.phi_out_BSDF[n_p])
                                 break
-                    if photon_state[7] == 0:
+                    if photon_state[8] == 0:
                         reflect_angle_spec[th_ind,ph_ind,int(photon_state[0])] += photon_state[3]*ph_proportions
                         reflect_angle_spec[-1,:,int(photon_state[0])] = np.sum(reflect_angle_spec[-2,:,int(photon_state[0])])/self.phi_out_BSDF.size
                     else:
                         reflect_angle_diff[th_ind,ph_ind,int(photon_state[0])] += photon_state[3]*ph_proportions
                         reflect_angle_diff[-1,:,int(photon_state[0])] = np.sum(reflect_angle_diff[-2,:,int(photon_state[0])])/self.phi_out_BSDF.size
+                
+                # Transmittance Data Collection
                 elif photon_state[2] == 1:
-                    if photon_state[7] == 0:
+                    if photon_state[8] == 0:
                         T_ball[int(photon_state[0])] += photon_state[3]
                     else:
                         T_diff[int(photon_state[0])] += photon_state[3]
                     A_medium[int(photon_state[0])] += 1 - photon_state[3]
-                    if photon_state[5] < 0:
-                        photon_state[5] *= -1
-                    elif photon_state[5] > np.pi:
-                        photon_state[5] = 2*np.pi - photon_state[5]
+                    if photon_state[6] < 0:
+                        photon_state[6] *= -1
+                    elif photon_state[6] > np.pi:
+                        photon_state[6] = 2*np.pi - photon_state[6]
                     for t in range(self.theta_out_BTDF_edge.size-1):
-                        if photon_state[5] >= self.theta_out_BTDF_edge[t] and photon_state[5] < self.theta_out_BTDF_edge[t+1]:
+                        if photon_state[6] >= self.theta_out_BTDF_edge[t] and photon_state[6] < self.theta_out_BTDF_edge[t+1]:
                             th_ind = t + 1
                             break
-                    if photon_state[6] <= 0:
-                        while photon_state[6] <= 0:
-                            photon_state[6] += 2*np.pi
-                    elif photon_state[6] > 2*np.pi:
-                        while photon_state[6] > 2*np.pi:
-                            photon_state[6] -= 2*np.pi
+                    if photon_state[7] <= 0:
+                        while photon_state[7] <= 0:
+                            photon_state[7] += 2*np.pi
+                    elif photon_state[7] > 2*np.pi:
+                        while photon_state[7] > 2*np.pi:
+                            photon_state[7] -= 2*np.pi
                     for n_p in range(self.phi_out_BSDF.size):
                         if n_p != self.phi_out_BSDF.size - 1:
-                            if photon_state[6] > self.phi_out_BSDF[n_p] and photon_state[6] <= self.phi_out_BSDF[n_p+1]:
+                            if photon_state[7] > self.phi_out_BSDF[n_p] and photon_state[7] <= self.phi_out_BSDF[n_p+1]:
                                 ph_ind = np.array([n_p,n_p+1])
-                                ph_proportions = np.array([np.abs(photon_state[6] - self.phi_out_BSDF[n_p+1]),np.abs(photon_state[6] - self.phi_out_BSDF[n_p])])\
+                                ph_proportions = np.array([np.abs(photon_state[7] - self.phi_out_BSDF[n_p+1]),np.abs(photon_state[7] - self.phi_out_BSDF[n_p])])\
                                                  /np.abs(self.phi_out_BSDF[n_p+1] - self.phi_out_BSDF[n_p])
                                 break
                         else:
-                            if photon_state[6] > self.phi_out_BSDF[n_p] and photon_state[6] <= 2*np.pi:
+                            if photon_state[7] > self.phi_out_BSDF[n_p] and photon_state[7] <= 2*np.pi:
                                 ph_ind = np.array([n_p,0])
-                                ph_proportions = np.array([np.abs(photon_state[6] - 2*np.pi),np.abs(photon_state[6] - self.phi_out_BSDF[n_p])])\
+                                ph_proportions = np.array([np.abs(photon_state[7] - 2*np.pi),np.abs(photon_state[7] - self.phi_out_BSDF[n_p])])\
                                                  /np.abs(2*np.pi - self.phi_out_BSDF[n_p])
                                 break
-                    if photon_state[7] == 0:
+                    if photon_state[8] == 0:
                         transmit_angle_ball[th_ind,ph_ind,int(photon_state[0])] += photon_state[3]*ph_proportions
                         transmit_angle_ball[0,:,int(photon_state[0])] = np.sum(transmit_angle_ball[1,:,int(photon_state[0])])/self.phi_out_BSDF.size
                     else:
                         transmit_angle_diff[th_ind,ph_ind,int(photon_state[0])] += photon_state[3]*ph_proportions
                         transmit_angle_diff[0,:,int(photon_state[0])] = np.sum(transmit_angle_diff[1,:,int(photon_state[0])])/self.phi_out_BSDF.size
+                
+                # Miscellaneous
                 elif photon_state[2] == 2:
                     A_particle[int(photon_state[0])] += 1
                 elif photon_state[2] == 3:
@@ -772,13 +793,13 @@ class monte_carlo:
             for i in range(1, subgroup):
                 comm.send(cmd, dest=(rank//subgroup)*subgroup+i, tag=i%1e4)
                 
-            np.savez(directory + "/data/" + identifier + "_MC_" + str(rank), I=I, R_spec=R_spec, R_diff=R_diff, R_scat=R_scat, T_ball=T_ball, T_diff=T_diff, T_scat=T_scat,
+            np.savez(directory_output + "/data/" + identifier + "_MC_" + str(rank), I=I, R_spec=R_spec, R_diff=R_diff, R_scat=R_scat, T_ball=T_ball, T_diff=T_diff, T_scat=T_scat,
                      A_medium=A_medium, A_particle=A_particle, A_TIR=A_TIR, Ns=Ns, inc_angle=inc_angle,
                      reflect_angle_spec=reflect_angle_spec, reflect_angle_diff=reflect_angle_diff,
                      transmit_angle_ball=transmit_angle_ball, transmit_angle_diff=transmit_angle_diff)
         else:
             while True:
-                photon_state = np.zeros(8).astype(np.float64)
+                photon_state = np.zeros(9).astype(np.float64)
                 req = comm.irecv(source=(rank//subgroup)*subgroup, tag=MPI.ANY_TAG)
                 cmd = req.wait(status)
                 
@@ -786,9 +807,10 @@ class monte_carlo:
                     break
                 num = status.Get_tag()
 
-                pht = photon(self.layer, self.wavelength, self.init_angle, self.boundary[0], self.polarization)
+                pht = photon(self.layer, self.wavelength, self.init_theta, self.init_phi, self.boundary[0], self.polarization)
                 photon_state[0] = pht.index
                 photon_state[4] = pht.theta_inc
+                photon_state[5] = pht.phi_inc
     
                 self.layer_change = 1
                 if self.layer_crossing(pht):
@@ -820,9 +842,9 @@ class monte_carlo:
                         photon_state[2] = 0
                     elif pht.z_exit < 0:
                         photon_state[2] = 1
-                    photon_state[5] = pht.theta_exit
-                    photon_state[6] = pht.phi_exit
-                photon_state[7] = pht.particle_scat
+                    photon_state[6] = pht.theta_exit
+                    photon_state[7] = pht.phi_exit
+                photon_state[8] = pht.particle_scat
                     
                 req = comm.Isend(photon_state, dest=(rank//subgroup)*subgroup, tag=num%1e4)
                 req.wait()

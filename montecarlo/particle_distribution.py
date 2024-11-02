@@ -33,8 +33,8 @@ def gamma_distribution(N_bins, f_num, shape, scale):
     
     # PDF
     if rank == 0:
-        if not os.path.isdir(directory + '/plots'):
-            os.mkdir(directory + '/plots')
+        if not os.path.isdir(directory[:-11] + '/plots'):
+            os.mkdir(directory[:-11] + '/plots')
     
         fig, ax = plt.subplots(figsize=[12,5], dpi=100)
         for n_l in range(N_layer):
@@ -43,7 +43,7 @@ def gamma_distribution(N_bins, f_num, shape, scale):
         ax.set_xlabel('Particle Radius (nm)')
         ax.set_ylabel('PDF')
         ax.legend()
-        plt.savefig(directory + '/plots/PDF')
+        plt.savefig(directory[:-11] + '/plots/PDF')
         plt.close()
     
     return pdf, r
