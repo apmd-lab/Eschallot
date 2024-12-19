@@ -487,13 +487,19 @@ class monte_carlo:
                         rank_for_plots[n_plots] = multiplier*subgroup
                         multiplier += 1
                         
-                    if rank == rank_for_plots[0] and self.wavelength.size > 1:
+                    if rank == rank_for_plots[0]:
                         # Reflectance Spectrum
                         fig, ax = plt.subplots(figsize=[12,5], dpi=100)
-                        ax.plot(self.wavelength, (R_spec+R_diff+R_scat)/I, linewidth=1, color='darkblue', label='R_tot')
-                        ax.plot(self.wavelength, R_spec/I, linewidth=1, linestyle='dashed', color='blue', label='R_spec')
-                        ax.plot(self.wavelength, R_diff/I, linewidth=1, linestyle='dashed', color='slateblue', label='R_diff')
-                        ax.plot(self.wavelength, R_scat/I, linewidth=1, linestyle='dashed', color='cyan', label='R_scat')
+                        if self.wavelength.size > 1:
+                            ax.plot(self.wavelength, (R_spec+R_diff+R_scat)/I, linewidth=1, color='darkblue', label='R_tot')
+                            ax.plot(self.wavelength, R_spec/I, linewidth=1, linestyle='dashed', color='blue', label='R_spec')
+                            ax.plot(self.wavelength, R_diff/I, linewidth=1, linestyle='dashed', color='slateblue', label='R_diff')
+                            ax.plot(self.wavelength, R_scat/I, linewidth=1, linestyle='dashed', color='cyan', label='R_scat')
+                        else:
+                            ax.scatter(self.wavelength, (R_spec+R_diff+R_scat)/I, linewidths=0, c='darkblue', label='R_tot')
+                            ax.scatter(self.wavelength, R_spec/I, linewidths=0, c='blue', label='R_spec')
+                            ax.scatter(self.wavelength, R_diff/I, linewidths=0, c='slateblue', label='R_diff')
+                            ax.scatter(self.wavelength, R_scat/I, linewidths=0, c='cyan', label='R_scat')
                         ax.set_ylim(-0.01, 1.01)
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Reflectance')
@@ -501,13 +507,19 @@ class monte_carlo:
                         plt.savefig(directory_output + '/plots/' + identifier + '_R_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
-                    if rank == rank_for_plots[1] and self.wavelength.size > 1:
+                    if rank == rank_for_plots[1]:
                         # Transmittance Spectrum
                         fig, ax = plt.subplots(figsize=[12,5], dpi=100)
-                        ax.plot(self.wavelength, (T_ball+T_diff+T_scat)/I, linewidth=1, color='darkred', label='T_tot')
-                        ax.plot(self.wavelength, T_ball/I, linewidth=1, linestyle='dashed', color='red', label='T_ballistic')
-                        ax.plot(self.wavelength, T_diff/I, linewidth=1, linestyle='dashed', color='lightcoral', label='T_diff')
-                        ax.plot(self.wavelength, T_scat/I, linewidth=1, linestyle='dashed', color='firebrick', label='T_scat')
+                        if self.wavelength.size > 1:
+                            ax.plot(self.wavelength, (T_ball+T_diff+T_scat)/I, linewidth=1, color='darkred', label='T_tot')
+                            ax.plot(self.wavelength, T_ball/I, linewidth=1, linestyle='dashed', color='red', label='T_ballistic')
+                            ax.plot(self.wavelength, T_diff/I, linewidth=1, linestyle='dashed', color='lightcoral', label='T_diff')
+                            ax.plot(self.wavelength, T_scat/I, linewidth=1, linestyle='dashed', color='firebrick', label='T_scat')
+                        else:
+                            ax.scatter(self.wavelength, (T_ball+T_diff+T_scat)/I, linewidths=0, c='darkred', label='T_tot')
+                            ax.scatter(self.wavelength, T_ball/I, linewidths=0, c='red', label='T_ballistic')
+                            ax.scatter(self.wavelength, T_diff/I, linewidths=0, c='lightcoral', label='T_diff')
+                            ax.scatter(self.wavelength, T_scat/I, linewidths=0, c='firebrick', label='T_scat')
                         ax.set_ylim(-0.01, 1.01)
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Transmittance')
@@ -515,13 +527,19 @@ class monte_carlo:
                         plt.savefig(directory_output + '/plots/' + identifier + '_T_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
-                    if rank == rank_for_plots[2] and self.wavelength.size > 1:
+                    if rank == rank_for_plots[2]:
                         # Absorption Spectrum
                         fig, ax = plt.subplots(figsize=[12,5], dpi=100)
-                        ax.plot(self.wavelength, (A_medium+A_particle+A_TIR)/I, linewidth=1, color='goldenrod', label='A_total')
-                        ax.plot(self.wavelength, A_medium/I, linewidth=1, linestyle='dashed', color='orange', label='A_medium')
-                        ax.plot(self.wavelength, A_particle/I, linewidth=1, linestyle='dashed', color='gold', label='A_particle')
-                        ax.plot(self.wavelength, A_TIR/I, linewidth=1, linestyle='dashed', color='olive', label='A_TIR')
+                        if self.wavelength.size > 1:
+                            ax.plot(self.wavelength, (A_medium+A_particle+A_TIR)/I, linewidth=1, color='goldenrod', label='A_total')
+                            ax.plot(self.wavelength, A_medium/I, linewidth=1, linestyle='dashed', color='orange', label='A_medium')
+                            ax.plot(self.wavelength, A_particle/I, linewidth=1, linestyle='dashed', color='gold', label='A_particle')
+                            ax.plot(self.wavelength, A_TIR/I, linewidth=1, linestyle='dashed', color='olive', label='A_TIR')
+                        else:
+                            ax.scatter(self.wavelength, (A_medium+A_particle+A_TIR)/I, linewidths=0, c='goldenrod', label='A_total')
+                            ax.scatter(self.wavelength, A_medium/I, linewidths=0, c='orange', label='A_medium')
+                            ax.scatter(self.wavelength, A_particle/I, linewidths=0, c='gold', label='A_particle')
+                            ax.scatter(self.wavelength, A_TIR/I, linewidths=0, c='olive', label='A_TIR')
                         ax.set_ylim(-0.01, 1.01)
                         ax.set_xlabel('Wavelength (nm)')
                         ax.set_ylabel('Absorption')
@@ -529,10 +547,13 @@ class monte_carlo:
                         plt.savefig(directory_output + '/plots/' + identifier + '_A_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))
                         plt.close()
                     
-                    if rank == rank_for_plots[3] and self.wavelength.size > 1:
+                    if rank == rank_for_plots[3]:
                         # Average Number of Scattering Events (spectrum)
                         fig, ax = plt.subplots(figsize=[12,5], dpi=100)
-                        ax.plot(self.wavelength, Ns/I, linewidth=1, color='teal', label='N_scatter')
+                        if self.wavelength.size > 1:
+                            ax.plot(self.wavelength, Ns/I, linewidth=1, color='teal', label='N_scatter')
+                        else:
+                            ax.scatter(self.wavelength, Ns/I, linewidths=0, c='teal', label='N_scatter')
                         ax.set_xlabel('Wavelength (nm)')
                         ax.legend()
                         plt.savefig(directory_output + '/plots/' + identifier + '_N_scatter_inc_angle_' + str(int(self.init_theta*180/np.pi)) + '_' + str(int(self.init_phi*180/np.pi)))

@@ -130,6 +130,7 @@ def jacobian(r,
 #
 #    np.savez(directory[:-13] + "/debug/jacobian", Q_sca=Q_sca, p=p, dQ_sca=dQ_sca, dp=dp, r=r, t_El=t_El, dt_El=dt_El, jac=jac, jac_fd=jac_fd, ksi=ml_init.ksi, psi=ml_init.psi, dksi=ml_init.dksi,
 #             dpsi=ml_init.dpsi, d2ksi=ml_init.d2ksi, d2psi=ml_init.d2psi, Q_abs=Q_abs, Q_ext=Q_ext, dQ_abs=dQ_abs, dQ_ext=dQ_ext, d_diff_CS=d_diff_CS, t_Ml=t_Ml, dt_Ml=dt_Ml)
+#    
 #    assert False
     
     return jac
@@ -181,7 +182,7 @@ def build_jacobian(Q_sca_con,
 
     return jac
 
-@jit(nopython=True, cache=True)
+#@jit(nopython=True, cache=True)
 def build_jacobian_directional(Q_sca_con,
                                Q_abs_con,
                                Q_ext_con,
@@ -202,17 +203,21 @@ def build_jacobian_directional(Q_sca_con,
                                phi,
                                ):
     
-    th_Fwd = 11
-    th0 = 291
-    th1 = 302
+    th_Fwd = 11 # 5
+    th0 = 291 # 355
+    th1 = 302 # 360
     phi_tgt = np.array([0])
+    wvl = 0
     
     jac = np.zeros(r.size)
     for l in range(r.size):
-        denom = np.sum(p[0,th_Fwd:,:]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+        denom = np.sum(p[wvl,th_Fwd:,:]*np.sin(theta[th_Fwd:])[np.newaxis,:,np.newaxis], axis=(1,2))
+        d_denom = -np.sum(dp[wvl,th_Fwd:,:,l]*np.sin(theta[th_Fwd:])[np.newaxis,:,np.newaxis], axis=(1,2))/denom**2
         for i in range(phi_tgt.size):
-            jac[l] += -np.sum(dp[0,th0:th1,phi_tgt[i],l]*np.sin(theta[th0:th1])[:,np.newaxis])/denom\
-                      + np.sum(p[0,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[:,np.newaxis])/denom**2*np.sum(dp[0,th_Fwd:,:,l]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+            numer = np.sum(p[wvl,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[np.newaxis,:], axis=1)
+            d_numer = np.sum(dp[wvl,th0:th1,phi_tgt[i],l]*np.sin(theta[th0:th1])[np.newaxis,:], axis=1)
+            
+            jac[l] += -(d_numer/denom + numer*d_denom)
     
     return jac
 
@@ -339,7 +344,7 @@ def build_residual(Q_sca_con,
 
     return res
 
-@jit(nopython=True, cache=True)
+#@jit(nopython=True, cache=True)
 def build_residual_directional(Q_sca_con,
                                Q_abs_con,
                                Q_ext_con,
@@ -354,13 +359,16 @@ def build_residual_directional(Q_sca_con,
                                theta,
                                phi):
 
-    th_Fwd = 11
-    th0 = 291
-    th1 = 302
+    th_Fwd = 11 # 5
+    th0 = 291 # 355
+    th1 = 302 # 360
     phi_tgt = np.array([0])
-
+    wvl = 0
+    
     res = 0
     for i in range(phi_tgt.size):
-        res += -np.sum(p[0,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[:,np.newaxis])/np.sum(p[0,th_Fwd:,:]*np.sin(theta[th_Fwd:])[:,np.newaxis])
+        numer = np.sum(p[wvl,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[np.newaxis,:], axis=1)
+        denom = np.sum(p[wvl,th_Fwd:,:]*np.sin(theta[th_Fwd:])[np.newaxis,:,np.newaxis], axis=(1,2))
+        res += -numer/denom
     
     return res

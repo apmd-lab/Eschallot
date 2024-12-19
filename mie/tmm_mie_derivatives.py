@@ -295,8 +295,8 @@ def needle_derivative_wrapper(r_needle,
                                                                                         lam, theta, phi, lmax, k, r, n, psi, dpsi, d2psi, ksi, dksi, d2ksi, pi_l, tau_l, eta_tilde,
                                                                                         Tcu_El, Tcu_Ml, Tcl_El, Tcl_Ml, T11_El, T21_El, T11_Ml, T21_Ml, t_El, t_Ml, S1, S2)
                 
-            dMF_val = build_topology_nucleation_derivative(Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, Q_sca, Q_abs, Q_ext, p,
-                                                           dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, lam.size, theta.size, phi.size)
+            dMF_val = build_topology_nucleation_derivative_directional(Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, Q_sca, Q_abs, Q_ext, p,
+                                                                       dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, lam, theta, phi)
             
             return dMF_val
 
@@ -421,7 +421,11 @@ def needle_derivative(r_needle, d_needle, n_needle, Q_sca, Q_abs, Q_ext, p, Q_sc
 
 @jit(nopython=True, cache=True)
 def build_topology_nucleation_derivative(Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, Q_sca, Q_abs, Q_ext, p,
-                                         dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, wvl, th, ph):
+                                         dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, lam, theta, phi):
+    wvl = lam.size
+    th = theta.size
+    ph = phi.size    
+    
     dMF_val = 0
             
     dMF_val += np.sum(2*(Q_sca - Q_sca_con[0,0,:])*Q_sca_con[0,1,:]**2*dQ_sca)
@@ -441,5 +445,25 @@ def build_topology_nucleation_derivative(Q_sca_con, Q_abs_con, Q_ext_con, p_con,
     dMF_val += np.sum(2*np.minimum(p - p_con[2,0,:,:,:], np.zeros((wvl, th, ph)))*p_con[2,1,:,:,:]**2*dp)
     
     dMF_val += np.sum(diff_CS_con*d_diff_CS)
+    
+    return dMF_val
+
+#@jit(nopython=True, cache=True)
+def build_topology_nucleation_derivative_directional(Q_sca_con, Q_abs_con, Q_ext_con, p_con, diff_CS_con, Q_sca, Q_abs, Q_ext, p,
+                                                     dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, lam, theta, phi):
+    th_Fwd = 11 # 5
+    th0 = 291 # 355
+    th1 = 302 # 360
+    phi_tgt = np.array([0])
+    wvl = 0
+    
+    dMF_val = 0
+    denom = np.sum(p[wvl,th_Fwd:,:]*np.sin(theta[th_Fwd:])[np.newaxis,:,np.newaxis], axis=(1,2))
+    d_denom = -np.sum(dp[wvl,th_Fwd:,:]*np.sin(theta[th_Fwd:])[np.newaxis,:,np.newaxis], axis=(1,2))/denom**2
+    for i in range(phi_tgt.size):
+        numer = np.sum(p[wvl,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[np.newaxis,:], axis=1)
+        d_numer = np.sum(dp[wvl,th0:th1,phi_tgt[i]]*np.sin(theta[th0:th1])[np.newaxis,:], axis=1)
+        
+        dMF_val += -(d_numer/denom + numer*d_denom)
     
     return dMF_val

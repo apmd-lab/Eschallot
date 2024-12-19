@@ -470,7 +470,7 @@ def deep_search(index,
                         break
         
             n_new = np.concatenate((n[:,:r_final+1], n_needle[:,m].reshape((np.size(ml_init.lam),1)), n[:,r_final:]), axis=1)
-            r_new = np.hstack((r[:r_final], z_final + 1e-3, z_final - 1e-3, r[r_final:]))
+            r_new = np.hstack((r[:r_final], z_final + 1e-1, z_final - 1e-1, r[r_final:]))
             ban_needle_new = np.hstack((ban_needle[:r_final], False, ban_needle[r_final-1:]))
             mat_profile_new = np.hstack((mat_profile[:r_final+1], mat_needle[m], mat_profile[r_final:]))
             
