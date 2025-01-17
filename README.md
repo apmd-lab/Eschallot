@@ -6,7 +6,7 @@ The above algorithm is combined with the transfer matrix method for the Mie scat
 
 ![](flowchart.png)
 
-If you find this code helpful in your research, please consider citing:
+If you have found this code to be helpful in your research, please consider citing:
 
 (to be added)
 
