@@ -13,6 +13,7 @@ Inspired by the needle optimization algorithm popular in multilayer film design 
 ![](flowchart.png)
 
 If you find this code helpful in your research, please consider citing:
+
 (to be added)
 
 **References:**
