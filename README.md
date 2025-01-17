@@ -8,11 +8,12 @@ Optimization can be done by:
 
 **2. Gradient descent** (optimize boundary positions only with fixed materials and the number of layers)
 
-The needle optimization algorithm is a popular method in multilayer film design **[3-5]** and can be conceptualized as **(a)** optimizing the boundary positions by gradient descent (*shape optimization*) and **(b)** optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (*topology nucleation*) in an alternating manner.
+Inspired by the needle optimization algorithm popular in multilayer film design **[3-5]**, we developed a topology optimization algorithm for multi-shell spherical particles. The algorithm can be conceptualized as **(a)** optimizing the layer boundary positions by gradient descent (*shape optimization*) and **(b)** optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (*topology nucleation*) in an alternating manner.
 
 ![](flowchart.png)
 
-Refer to this paper for more details.
+If you find this code helpful in your research, please consider citing:
+(to be added)
 
 **References:**
 
