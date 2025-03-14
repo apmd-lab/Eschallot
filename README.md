@@ -1,8 +1,6 @@
 # Eschallot: Comprehensive Package for the Simulation and Optimization of Spherical Particles
 
-Inspired by the needle optimization algorithm popular in multilayer film design **[1-3]**, we developed a topology optimization algorithm for multi-shell spherical particles. The algorithm can be conceptualized as **(a)** optimizing the layer boundary positions by gradient descent (*shape optimization*) and **(b)** optimizing the materials and the number of layers by inserting an infinitesimal needle layer at an optimal location (*topology nucleation*) in an alternating manner.
-
-The above algorithm is combined with the transfer matrix method for the Mie scattering of multi-shell particles **[4-5]** to enable the efficient optimization of various far-field scattering quantities.
+Eschallot is an optimization and simulation tool for light scattering by stratified spherical nano-and microparticles, inspired by the needle optimization algorithm used for multilayer thin-film design **[1-3]**. The algorithm alternates between **(a) Shape Optimization** (optimizing the layer boundary positions by gradient descent) and **(b) Topology Nucleation** (optimizing the materials and the number of layers by nucleating an infinitesimal layer at an optimal location) to minimize a user-defined cost function based on the particle's far-field scattering quantities (cross-sections, phase functions, etc.). These quantities are computed in each iteration using the transfer matrix method formulation of Mie scattering for multi-shell particles **[4-5]**.
 
 ![](flowchart.png)
 
@@ -22,17 +20,19 @@ If you have found this code to be helpful in your research, please consider citi
 
 **[5]** I. Rasskazov, P. Carney, A. Moroz, STRATIFY: a comprehensive and versatile MATLAB code for a multilayered sphere, OSA Contin. 3, 2290 (2020).
 
-# Quickstart
+# Tutorial
 
-**Compute efficiencies and the phase function:** `simulate_particle.py`
+**1. Defining the cost function**
 
-**Run needle optimization:** `run_needle_optimization.py`
+**2. Running the optimization** `run_needle_optimization.py`
 
 - To define a custom cost function, change the variables in 'radius_sweep'
 
 - To define a custom range for the initial particle radius, change the inputs to 'radius_sweep' (under "if __name__ == '__main__'")
 
-**Run gradient descent:** `run_gradient_optimization.py`
+**3. Computing far-field scattering quantities**
+
+**4. Simulating particle-dispersed random media**
 
 # Requirements
 
@@ -43,3 +43,5 @@ If you have found this code to be helpful in your research, please consider citi
 - Matplotlib
 
 - Numba
+
+- mpi4py
