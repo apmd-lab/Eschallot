@@ -1,13 +1,15 @@
 import numpy as np
 import os
-directory = os.path.dirname(os.path.realpath(__file__))
 
 class ref_index:
-    def __init__(self, filename, target_wvl=None):
+    def __init__(self, filename, target_wvl=None, directory=None):
         """ target_wvl: the wavelength points to be interpolated to """
 
-        if os.path.exists(directory[:-5] + "/material_data/" + filename + '.txt'):
-            with open(directory[:-5] + "/material_data/" + filename + '.txt', 'r') as f:
+        if directory is None:
+            directory = os.path.dirname(os.path.realpath(__file__))[:-5] + "/material_data/"
+
+        if os.path.exists(directory + filename + '.txt'):
+            with open(directory + filename + '.txt', 'r') as f:
                 labels = f.readline()
                 line_count = 0
                 for line in f:
@@ -18,16 +20,16 @@ class ref_index:
                 count = 0
                 for line in f:
                     temp_array = np.array([line.split()])
-                    self.raw[count,:] = np.asfarray(temp_array, float)
+                    self.raw[count,:] = np.asarray(temp_array, dtype=float)
                     count += 1
-        elif os.path.exists(directory[:-5] + "/material_data/" + filename + '.npz'):
-            data = np.load(directory[:-5] + "/material_data/" + filename + '.npz')
+        elif os.path.exists(directory + filename + '.npz'):
+            data = np.load(directory + filename + '.npz')
             self.raw = np.zeros((data['lam'].size, 3))
             self.raw[:,0] = data['lam']
             self.raw[:,1] = data['n']
             self.raw[:,2] = data['k']
         else:
-            raise Exception('Nonexistent data file: ' + directory[:-5] + "/material_data/" + filename + '.txt or .npz')
+            raise Exception('Nonexistent data file: ' + directory + filename + '.txt or .npz')
         
         if target_wvl is not None:
             new_n = np.interp(target_wvl, self.raw[:,0], self.raw[:,1])
@@ -67,12 +69,14 @@ class ref_index:
         temp_data = temp_data + 1j*self.raw[:,2]
         return self.raw[:,0], temp_data
 
-def load_all(target_wavelength, function, material=np.array(['all'])):
+def load_all(target_wavelength, function, material=np.array(['all']), directory=None):
+    if directory is None:
+        directory = os.path.dirname(os.path.realpath(__file__))[:-5] + "/material_data/"
+
     raw_wavelength = {}
     mat_dict = {}
-    mat_directory = directory[:-5] + "/material_data/"
     if material[0] == 'all':
-        mat_files = os.listdir(mat_directory)
+        mat_files = os.listdir(directory)
         for filename in mat_files:
             wav = None
             if filename[-4:] == '.txt':

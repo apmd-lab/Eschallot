@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH -o /home/gridsan/smin/python_scripts/Eschallot/slurm/run_topology_optimization.log-%j
-#SBATCH -n 100
+#SBATCH -o /home/minseokhwan/Eschallot/slurm/run_topology_optimization_mse_Qsca.log-%j
+#SBATCH --partition=32core
+#SBATCH --job-name=eschallot
+#SBATCH --ntasks=64
 
-source /etc/profile
-module load anaconda/2023a
 export OMP_NUM_THREADS=1
 
-mpirun -np 100 python /home/gridsan/smin/python_scripts/Eschallot/runfiles/run_topology_optimization.py
+/appl/intel/oneapi/mpi/2021.8.0/bin/mpirun -n 64 python /home/minseokhwan/Eschallot/runfiles/run_topology_optimization_directional_reflector.py

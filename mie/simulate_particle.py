@@ -1,12 +1,7 @@
-import os
-directory = os.path.dirname(os.path.realpath(__file__))
-import sys
-sys.path.insert(0, directory[:-4])
-
 import numpy as np
-import mie.special_functions as spec
-import mie.tmm_mie as tmm
-import util.read_mat_data as rmd
+import Eschallot.mie.special_functions as spec
+import Eschallot.mie.tmm_mie as tmm
+import Eschallot.util.read_mat_data as rmd
 
 def simulate(lam, theta, phi, r, n):
     k = (2*np.pi)/lam
@@ -65,7 +60,5 @@ def simulate(lam, theta, phi, r, n):
             lmax = np.min(np.argwhere(nancheck)) - 1
         else:
             break
-    
-    #np.savez(directory + "/debug", ksi=ksi, dksi=dksi, psi=psi, dpsi=dpsi, Q_sca=Q_sca, Q_abs=Q_abs, t_El=t_El, t_Ml=t_Ml, lmax=lmax)
-    
+
     return Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM, S1_mpE, S1_mpM, S2_mpE, S2_mpM

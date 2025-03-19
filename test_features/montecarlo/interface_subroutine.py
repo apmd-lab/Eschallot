@@ -1,16 +1,21 @@
+import os
+directory = os.path.dirname(os.path.realpath(__file__))
+import sys
+sys.path.insert(0, directory[:-11])
+
 import numpy as np
 from numba import jit
-import Eschallot.montecarlo.snell as snell
+import montecarlo.snell as snell
 
 @jit(nopython=True, cache=True)
-def interface_jit(n1, n2, downward, boundary, layer, layer_change,
+def interface_jit(n1, n2, coarse_roughness, downward, boundary, layer, layer_change,
                   photon_current_layer, photon_current_theta, photon_current_phi,
                   photon_interface_R, photon_interface_T, photon_TIR, photon_pol,
                   photon_current_pos, photon_prev_TIR_theta, photon_TIR_stop, photon_TIR_abs,
                   photon_exit, photon_theta_exit, photon_phi_exit, photon_x_exit, photon_y_exit, photon_z_exit):
 
     # Surface Normal Orientation (defined w.r.t. downward normal)
-    surf_slope = 0
+    surf_slope = np.abs(np.random.normal(0, coarse_roughness))
     th_surf = np.arctan(surf_slope) # note: th_surf < 0 for surf_slope < 0
     phi_surf = 2*np.pi*np.random.rand()
     

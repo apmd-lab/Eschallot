@@ -201,7 +201,7 @@ diff_scat_CS = diff_scat_CS_temp.reshape(n_particle, n_layer, n_type, 2, wvl, th
 
 diff_scat_CS[:,:,:,1,:,:,:] = np.roll(diff_scat_CS[:,:,:,0,:,:,:], int(phi_out.size/4), axis=5)
 
-subgroup = 6 # head + procs (total number of cores allocated for this job must be a multiple of this number)
+subgroup = 8 # head + procs (total number of cores allocated for this job must be a multiple of this number)
 
 if rank == 0:
     np.savez(directory[:-9] + '/data/Mie_data_' + identifier, C_sca_surf=C_sca_surf, C_abs_surf=C_abs_surf, C_sca_bulk=C_sca_bulk, C_abs_bulk=C_abs_bulk,

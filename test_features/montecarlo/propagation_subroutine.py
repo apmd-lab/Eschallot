@@ -2,15 +2,42 @@ import numpy as np
 from numba import jit
 
 @jit(nopython=True, cache=True)
-def propagation_jit1(C_sca, C_abs, boundary, density, photon_index,
+def propagation_jit1(fine_roughness, C_sca_bulk, C_abs_bulk, C_sca_surf, C_abs_surf, boundary, density, photon_index,
                      photon_interface_R, photon_interface_T, photon_particle_scat, photon_particle_abs,
                      photon_current_theta, photon_current_phi, photon_current_layer,
-                     photon_next_pos):
+                     photon_next_pos, isotropic):
     theta_temp = np.copy(np.array([photon_current_theta]))[0]
     phi_temp = np.copy(np.array([photon_current_phi]))[0]
 
-    mfp_inv = (C_sca[photon_index] + C_abs[photon_index])*density
+    if photon_interface_T == 1 and (photon_interface_R + photon_particle_scat + photon_particle_abs) == 0:
+        # Accounting for fine roughness (can only do for entering photons b/c it's unclear which scattering event will be the last for
+        # exiting ones)
+        if np.random.rand() >= fine_roughness:
+            if isotropic:
+                C_sca = C_sca_bulk[photon_current_layer-1,:,:,photon_index]
+                C_abs = C_abs_bulk[photon_current_layer-1,:,:,photon_index]
+            else:
+                C_sca = C_sca_bulk[photon_current_layer-1,:,photon_index]
+                C_abs = C_abs_bulk[photon_current_layer-1,:,photon_index]
+        else:
+            if isotropic:
+                C_sca = C_sca_surf[:,:,photon_index]
+                C_abs = C_abs_surf[:,:,photon_index]
+            else:
+                C_sca = C_sca_surf[:,photon_index]
+                C_abs = C_abs_surf[:,photon_index]
+    else:
+        if isotropic:
+            C_sca = C_sca_bulk[photon_current_layer-1,:,:,photon_index]
+            C_abs = C_abs_bulk[photon_current_layer-1,:,:,photon_index]
+        else:
+            C_sca = C_sca_bulk[photon_current_layer-1,:,photon_index]
+            C_abs = C_abs_bulk[photon_current_layer-1,:,photon_index]
 
+    if isotropic:
+        mfp_inv = np.sum((C_sca + C_abs)*density[photon_current_layer-1,:,:]) # summation over all particle types & radii in a given layer
+    else:
+        mfp_inv = np.sum((C_sca + C_abs)*density[photon_current_layer-1,:])
     if mfp_inv == 0:
         path_length = (boundary[photon_current_layer-1] - boundary[photon_current_layer])/np.abs(np.cos(theta_temp)) + 1
     else:
