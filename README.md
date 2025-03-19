@@ -74,7 +74,7 @@ phi_plot = np.array([0,90])*np.pi/180
 ```
 
 * Materials
-  - All materials are specified using the name of the corresponding text file containing the refractive index spectrum. The list of all materials available by default may be found [here](./material_data). The user can also set up a separate directory for their own material data which can be provided as a parameter to the optimizer (explained in more detail below).
+  - All materials are specified using the name of the corresponding text file containing the refractive index spectrum. The list of all materials available by default may be found [here](./eschallot/material_data). The user can also set up a separate directory for their own material data which can be provided as a parameter to the optimizer (explained in more detail below).
   - **mat_profile**: specifies the materials in the following order -> embedding medium > outermost shell > n-th shell > core
   - **mat_needle**: specifies the materials that may be used as layers for the multi-shell particle. Order does not matter.
   - Note that it is recommended to initialize the optimization with a single-layer homogeneous particle (TiO2 in the above example).
