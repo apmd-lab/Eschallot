@@ -37,7 +37,7 @@ Eschallot is an optimization and simulation tool for light scattering by stratif
 # Installation
 
 ```
-pip install Eschallot
+pip install eschallot
 ```
 
 # Tutorial
