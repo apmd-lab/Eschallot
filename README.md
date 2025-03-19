@@ -388,6 +388,7 @@ f_vol = 0.1 # particle volume fraction
   - subgroup: the Monte Carlo simulator divides the available processes into subgroups. The subgroup parameter sets the number of processes per subgroup. Each subgroup is organized into a hierarchical structure where one head process assigns single-photon simulation jobs to worker processes and subsequently collects the results in an asynchronous manner (whenever each worker finishes its job). With smaller subgroups, the simulation speed is limited by the time taken by each worker to finish their jobs, whereas with larger subgroups, the simulation speed is limited by the communication between the head and worker processes. The optimal subgroup depends on how strongly the particle-dispersed medium scatters and also on the MPI and CPU specifications. The table below displays simulation times for this example for different subgroup configurations.
 
 | Number of Subgroups | Procs per Subgroup | Total Number of Procs | Total Number of Worker Procs | Simulation Time (min) |
+| -------------------:| ------------------:| ---------------------:| ----------------------------:| ---------------------:|
 | 16 | 4 | 64 | 48 | 25.78 |
 | 8 | 8 | 64 | 56 | 22.57 |
 | 4 | 16 | 64 | 60 | 21.35 |
