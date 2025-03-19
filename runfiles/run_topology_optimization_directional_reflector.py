@@ -1,11 +1,11 @@
 import os
 directory = os.path.dirname(os.path.realpath(__file__))
-import sys
-sys.path.insert(0, '/home/minseokhwan/')
+#import sys
+#sys.path.insert(0, '/home/minseokhwan/')
 
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
-import Eschallot.optimization.topology_optimization as topopt
+import eschallot.optimization.topology_optimization as topopt
 import time
 from mpi4py import MPI
 comm = MPI.COMM_WORLD

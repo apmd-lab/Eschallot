@@ -1,12 +1,12 @@
 import os
 directory = os.path.dirname(os.path.realpath(__file__))
-import sys
-sys.path.insert(0, '/home/minseokhwan/')
+#import sys
+#sys.path.insert(0, '/home/minseokhwan/')
 
 import numpy as np
-import Eschallot.mie.simulate_particle as sim
-import Eschallot.util.read_mat_data as rmd
-import Eschallot.montecarlo.monte_carlo_BSDF as mc
+import eschallot.mie.simulate_particle as sim
+import eschallot.util.read_mat_data as rmd
+import eschallot.montecarlo.monte_carlo_BSDF as mc
 import time
 import subprocess
 from mpi4py import MPI

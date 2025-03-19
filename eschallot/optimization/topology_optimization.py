@@ -1,9 +1,9 @@
 import numpy as np
-import Eschallot.mie.special_functions as spec
-import Eschallot.mie.tmm_mie as tmm
-import Eschallot.mie.simulate_particle as sim
-import Eschallot.optimization.cost_gradients as cg
-import Eschallot.util.read_mat_data as rmd
+import eschallot.mie.special_functions as spec
+import eschallot.mie.tmm_mie as tmm
+import eschallot.mie.simulate_particle as sim
+import eschallot.optimization.cost_gradients as cg
+import eschallot.util.read_mat_data as rmd
 from scipy.optimize import minimize_scalar, minimize, LinearConstraint, Bounds
 from mpi4py import MPI
 comm = MPI.COMM_WORLD

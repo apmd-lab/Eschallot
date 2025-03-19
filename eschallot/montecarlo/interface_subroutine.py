@@ -1,6 +1,6 @@
 import numpy as np
 from numba import jit
-import Eschallot.montecarlo.snell as snell
+import eschallot.montecarlo.snell as snell
 
 @jit(nopython=True, cache=True)
 def interface_jit(n1, n2, downward, boundary, layer, layer_change,

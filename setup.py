@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='eschallot',                # Package name
-      version='0.1.0',                         # Package version
+      version='0.1.4',                         # Package version
       author='Seokhwan Min',                      # Your name
       author_email='petermsh513@gmail.com',   # Your email address
       description='Optimization tool for light-scattering multi-shell spherical particles.',  # Short description
@@ -18,7 +18,7 @@ setup(name='eschallot',                # Package name
                    ],
 
       # Specify additional files to include within the package
-      package_data={'my_sample_package': ['material_data/*.txt'],
+      package_data={'eschallot': ['material_data/*.txt'],
                     },
       include_package_data=True,  # Includes files specified in MANIFEST.in, if present
       )

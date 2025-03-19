@@ -1,7 +1,7 @@
 import numpy as np
-import Eschallot.mie.special_functions as spec
-import Eschallot.mie.tmm_mie as tmm
-import Eschallot.util.read_mat_data as rmd
+import eschallot.mie.special_functions as spec
+import eschallot.mie.tmm_mie as tmm
+import eschallot.util.read_mat_data as rmd
 
 def simulate(lam, theta, phi, r, n):
     k = (2*np.pi)/lam

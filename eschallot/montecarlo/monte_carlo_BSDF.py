@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.interpolate import interpn
 import matplotlib.pyplot as plt
-import Eschallot.montecarlo.snell as snell
-import Eschallot.mie.simulate_particle as sim
-import Eschallot.util.read_mat_data as rmd
-import Eschallot.montecarlo.interface_subroutine as interf
-import Eschallot.montecarlo.propagation_subroutine as propag
+import eschallot.montecarlo.snell as snell
+import eschallot.mie.simulate_particle as sim
+import eschallot.util.read_mat_data as rmd
+import eschallot.montecarlo.interface_subroutine as interf
+import eschallot.montecarlo.propagation_subroutine as propag
 import time
 import os
 from mpi4py import MPI

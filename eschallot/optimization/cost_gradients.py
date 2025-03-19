@@ -1,6 +1,6 @@
 import numpy as np
-import Eschallot.mie.tmm_mie as tmm
-import Eschallot.mie.special_functions as spec
+import eschallot.mie.tmm_mie as tmm
+import eschallot.mie.special_functions as spec
 
 def cost(r,
          n,
