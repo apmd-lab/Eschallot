@@ -1,18 +1,15 @@
 import os
 directory = os.path.dirname(os.path.realpath(__file__))
-import sys
-sys.path.insert(0, directory[:-20])
 
 import numpy as np
-import util.read_mat_data as rmd
-import mie.simulate_particle as sim
+import eschallot.util.read_mat_data as rmd
+import eschallot.mie.simulate_particle as sim
 
 lam = np.linspace(360, 830, 471)
-theta = np.linspace(0, np.pi, 361)
+theta = np.linspace(0, np.pi, 2)
 phi = np.array([0,np.pi/2])
 
-with np.load(directory + '/Fig1_Fig2.npz') as data:
-    r = data['r']
+r = np.array([371.9,358.2,323.1,235.2])
     
 mat_profile = np.array(['Air'] + ['TiO2_Sarkar','SiO2_bulk']*2) # Outer(including embedding medium) to inner
 mat_type = list(set(mat_profile))
