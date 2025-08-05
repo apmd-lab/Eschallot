@@ -634,7 +634,7 @@ def run_needle(
     needle_status = 1
     while True:
         iteration += 1
-        needle_status, n_needle, loc, dMF, nan_break = insert_needle(
+        needle_status, n_needle, loc, dMF = insert_needle(
             ml_init,
             mat_dict_cost,
             mat_needle,
