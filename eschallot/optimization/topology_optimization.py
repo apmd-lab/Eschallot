@@ -48,7 +48,7 @@ class multilayer:
             self.lmax = int(np.real(np.round(np.max(np.array([nstop,x1,x2]))) + 15))
             # print('Number of Orders (l): ' + str(int(self.lmax)))
         else:
-            self.lmax = lmax
+            self.lmax = int(np.max((lmax, 1)))
         
         # Legendre polynomials
         self.pi_l = spec.pi_n(self.theta, self.lmax)
@@ -79,15 +79,16 @@ class multilayer:
         self.d2ksi[1,:,:,:] = -(1 - coeff/self.x_tilde[:,np.newaxis,:]**2)*self.ksi[1,:,:,:]
         self.d2psi[1,:,:,:] = -(1 - coeff/self.x_tilde[:,np.newaxis,:]**2)*self.psi[1,:,:,:]
 
-def refine_r(index,
-             ml,
-             r0,
-             n,
-             lam,
-             d_low,
-             r_max,
-             custom_cost,
-             ):
+def refine_r(
+    index,
+    ml,
+    r0,
+    n,
+    lam,
+    d_low,
+    r_max,
+    custom_cost,
+    ):
 
     ub = np.inf*np.ones(r0.size)
     ub[0] = r_max
@@ -101,67 +102,90 @@ def refine_r(index,
     constr = LinearConstraint(A, lb=np.ones(r0.size), ub=np.inf*np.ones(r0.size))
     
     verbose = 0
-    result = minimize(cg.cost, r0, args=(n, index, lam, ml, custom_cost),
-                      method='trust-constr', jac=cg.shape_gradient, constraints=constr, bounds=bnd,
-                      options={'verbose': verbose, 'gtol': 1e-8, 'xtol': 1e-8, 'maxiter': 1000})
+    result = minimize(
+        cg.cost,
+        r0,
+        args=(
+            n,
+            index,
+            lam,
+            ml,
+            custom_cost,
+        ),
+        method='trust-constr',
+        jac=cg.shape_gradient,
+        constraints=constr,
+        bounds=bnd,
+        options={
+            'verbose': verbose,
+            'gtol': 1e-8,
+            'xtol': 1e-8,
+            'maxiter': 1000,
+        },
+    )
 
     r_new = result.x.copy()
     cost = result.fun        
 
     Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-        S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(lam,
-                                                          ml.theta,
-                                                          ml.phi,
-                                                          ml.lmax,
-                                                          ml.k,
-                                                          result.x,
-                                                          n,
-                                                          ml.psi,
-                                                          ml.dpsi,
-                                                          ml.ksi,
-                                                          ml.dksi,
-                                                          ml.pi_l,
-                                                          ml.tau_l,
-                                                          ml.eta_tilde)                                                              
+        S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+            lam,
+            ml.theta,
+            ml.phi,
+            ml.lmax,
+            ml.k,
+            result.x,
+            n,
+            ml.psi,
+            ml.dpsi,
+            ml.ksi,
+            ml.dksi,
+            ml.pi_l,
+            ml.tau_l,
+            ml.eta_tilde,
+        )                                                              
     
     return r_new, cost, Q_sca, Q_abs, Q_ext, p, diff_CS
 
-def init_needle(ml, r, n, lam):
+def init_needle(ml, r, n, lam, lmax=None):
     # make original object for reference in grad_needle
-    result = tmm.transfer_matrix(lam,
-                                 ml.theta,
-                                 ml.phi,
-                                 ml.lmax,
-                                 ml.k,
-                                 r,
-                                 n,
-                                 ml.psi,
-                                 ml.dpsi,
-                                 ml.ksi,
-                                 ml.dksi,
-                                 ml.pi_l,
-                                 ml.tau_l,
-                                 ml.eta_tilde)
+    result = tmm.transfer_matrix(
+        lam,
+        ml.theta,
+        ml.phi,
+        ml.lmax,
+        ml.k,
+        r,
+        n,
+        ml.psi,
+        ml.dpsi,
+        ml.ksi,
+        ml.dksi,
+        ml.pi_l,
+        ml.tau_l,
+        ml.eta_tilde,
+    )
 
     nancheck = np.isnan(np.sum(result[8], axis=0))
-    lmax = None
     if np.sum(nancheck) > 0:
         lmax = np.min(np.argwhere(nancheck)) - 1
         ml.update(r, n, lmax=lmax)
-        result = tmm.transfer_matrix(lam,
-                                     ml.theta,
-                                     ml.phi,
-                                     ml.lmax,
-                                     ml.k,
-                                     r,
-                                     n,
-                                     ml.psi,
-                                     ml.dpsi,
-                                     ml.ksi,
-                                     ml.dksi,
-                                     ml.pi_l,
-                                     ml.tau_l,
-                                     ml.eta_tilde)
+        result = tmm.transfer_matrix(
+            lam,
+            ml.theta,
+            ml.phi,
+            ml.lmax,
+            ml.k,
+            r,
+            n,
+            ml.psi,
+            ml.dpsi,
+            ml.ksi,
+            ml.dksi,
+            ml.pi_l,
+            ml.tau_l,
+            ml.eta_tilde,
+        )
 
     ml.Tcu_El = result[0]
     ml.Tcu_Ml = result[1]
@@ -176,26 +200,28 @@ def init_needle(ml, r, n, lam):
     ml.S1 = result[10]
     ml.S2 = result[11]
 
-def insert_needle(ml_init,
-                  mat_dict,
-                  mat_needle,
-                  r,
-                  n,
-                  ban_needle,
-                  lam,
-                  Q_sca,
-                  Q_abs,
-                  Q_ext,
-                  p,
-                  diff_CS,
-                  d_low,
-                  custom_cost,
-                  ):
+def insert_needle(
+    ml_init,
+    mat_dict,
+    mat_needle,
+    r,
+    n,
+    ban_needle,
+    lam,
+    Q_sca,
+    Q_abs,
+    Q_ext,
+    p,
+    diff_CS,
+    d_low,
+    custom_cost,
+    lmax=None,
+    ):
     """ mat_dict: database of all materials in the multilayer stack
         mat_needle: list of materials that can be inserted as needles (array of strings)
     """
     ml_temp = multilayer(lam, ml_init.theta, ml_init.phi)
-    ml_temp.update(r, n)
+    ml_temp.update(r, n, lmax=lmax)
     init_needle(ml_temp, r, n, lam)
     ml_temp.r = r
     
@@ -211,103 +237,112 @@ def insert_needle(ml_init,
     for m in range(np.size(mat_needle)):
         nfev = 0
         loc_temp = np.array([0,r[0]])
-        l_dMF = cg.topology_gradient(loc_temp[0],
-                                     n_needle[:,m],
-                                     ban_needle,
-                                     Q_sca,
-                                     Q_abs,
-                                     Q_ext,
-                                     p,
-                                     diff_CS,
-                                     lam,
-                                     ml_temp.theta,
-                                     ml_temp.phi,
-                                     ml_temp.lmax,
-                                     ml_temp.k,
-                                     r,
-                                     n,
-                                     ml_temp.pi_l,
-                                     ml_temp.tau_l,
-                                     ml_temp.Tcu_El,
-                                     ml_temp.Tcu_Ml,
-                                     ml_temp.Tcl_El,
-                                     ml_temp.Tcl_Ml,
-                                     ml_temp.T11_El,
-                                     ml_temp.T21_El,
-                                     ml_temp.T11_Ml,
-                                     ml_temp.T21_Ml,
-                                     ml_temp.t_El,
-                                     ml_temp.t_Ml,
-                                     ml_temp.S1,
-                                     ml_temp.S2,
-                                     d_low,
-                                     custom_cost)
+        l_dMF = cg.topology_gradient(
+            loc_temp[0],
+            n_needle[:,m],
+            ban_needle,
+            Q_sca,
+            Q_abs,
+            Q_ext,
+            p,
+            diff_CS,
+            lam,
+            ml_temp.theta,
+            ml_temp.phi,
+            ml_temp.lmax,
+            ml_temp.k,
+            r,
+            n,
+            ml_temp.pi_l,
+            ml_temp.tau_l,
+            ml_temp.Tcu_El,
+            ml_temp.Tcu_Ml,
+            ml_temp.Tcl_El,
+            ml_temp.Tcl_Ml,
+            ml_temp.T11_El,
+            ml_temp.T21_El,
+            ml_temp.T11_Ml,
+            ml_temp.T21_Ml,
+            ml_temp.t_El,
+            ml_temp.t_Ml,
+            ml_temp.S1,
+            ml_temp.S2,
+            d_low,
+            custom_cost,
+        )
                                                     
-        r_dMF = cg.topology_gradient(loc_temp[-1],
-                                     n_needle[:,m],
-                                     ban_needle,
-                                     Q_sca,
-                                     Q_abs,
-                                     Q_ext,
-                                     p,
-                                     diff_CS,
-                                     lam,
-                                     ml_temp.theta,
-                                     ml_temp.phi,
-                                     ml_temp.lmax,
-                                     ml_temp.k,
-                                     r,
-                                     n,
-                                     ml_temp.pi_l,
-                                     ml_temp.tau_l,
-                                     ml_temp.Tcu_El,
-                                     ml_temp.Tcu_Ml,
-                                     ml_temp.Tcl_El,
-                                     ml_temp.Tcl_Ml,
-                                     ml_temp.T11_El,
-                                     ml_temp.T21_El,
-                                     ml_temp.T11_Ml,
-                                     ml_temp.T21_Ml,
-                                     ml_temp.t_El,
-                                     ml_temp.t_Ml,
-                                     ml_temp.S1,
-                                     ml_temp.S2,
-                                     d_low,
-                                     custom_cost)
+        r_dMF = cg.topology_gradient(
+            loc_temp[-1],
+            n_needle[:,m],
+            ban_needle,
+            Q_sca,
+            Q_abs,
+            Q_ext,
+            p,
+            diff_CS,
+            lam,
+            ml_temp.theta,
+            ml_temp.phi,
+            ml_temp.lmax,
+            ml_temp.k,
+            r,
+            n,
+            ml_temp.pi_l,
+            ml_temp.tau_l,
+            ml_temp.Tcu_El,
+            ml_temp.Tcu_Ml,
+            ml_temp.Tcl_El,
+            ml_temp.Tcl_Ml,
+            ml_temp.T11_El,
+            ml_temp.T21_El,
+            ml_temp.T11_Ml,
+            ml_temp.T21_Ml,
+            ml_temp.t_El,
+            ml_temp.t_Ml,
+            ml_temp.S1,
+            ml_temp.S2,
+            d_low,
+            custom_cost,
+        )
                                                     
         dMF_temp = np.array([l_dMF,r_dMF]).astype(np.float64)
-        result = minimize_scalar(cg.topology_gradient,
-                                 args=(n_needle[:,m],
-                                       ban_needle,
-                                       Q_sca,
-                                       Q_abs,
-                                       Q_ext,
-                                       p,
-                                       diff_CS,
-                                       lam,
-                                       ml_temp.theta,
-                                       ml_temp.phi,
-                                       ml_temp.lmax,
-                                       ml_temp.k,
-                                       r,
-                                       n,
-                                       ml_temp.pi_l,
-                                       ml_temp.tau_l,
-                                       ml_temp.Tcu_El,
-                                       ml_temp.Tcu_Ml,
-                                       ml_temp.Tcl_El,
-                                       ml_temp.Tcl_Ml,
-                                       ml_temp.T11_El,
-                                       ml_temp.T21_El,
-                                       ml_temp.T11_Ml,
-                                       ml_temp.T21_Ml,
-                                       ml_temp.t_El,
-                                       ml_temp.t_Ml,
-                                       ml_temp.S1,
-                                       ml_temp.S2,
-                                       d_low,
-                                       custom_cost),
-                                 bounds=loc_temp, method='bounded')
+        result = minimize_scalar(
+            cg.topology_gradient,
+            args=(
+                n_needle[:,m],
+                ban_needle,
+                Q_sca,
+                Q_abs,
+                Q_ext,
+                p,
+                diff_CS,
+                lam,
+                ml_temp.theta,
+                ml_temp.phi,
+                ml_temp.lmax,
+                ml_temp.k,
+                r,
+                n,
+                ml_temp.pi_l,
+                ml_temp.tau_l,
+                ml_temp.Tcu_El,
+                ml_temp.Tcu_Ml,
+                ml_temp.Tcl_El,
+                ml_temp.Tcl_Ml,
+                ml_temp.T11_El,
+                ml_temp.T21_El,
+                ml_temp.T11_Ml,
+                ml_temp.T21_Ml,
+                ml_temp.t_El,
+                ml_temp.t_Ml,
+                ml_temp.S1,
+                ml_temp.S2,
+                d_low,
+                custom_cost,
+            ),
+            bounds=loc_temp,
+            method='bounded',
+        )
                                  
         nfev += result.nfev
         if np.abs(result.x - loc_temp[0]) >= 1 and np.abs(result.x - loc_temp[-1]) >= 1:
@@ -320,38 +355,43 @@ def insert_needle(ml_init,
             cnt = 0
             for i in range(intervals-2, -1, -1):
                 if evaluate[i]:
-                    result = minimize_scalar(cg.topology_gradient,
-                                             args=(n_needle[:,m],
-                                                   ban_needle,
-                                                   Q_sca,
-                                                   Q_abs,
-                                                   Q_ext,
-                                                   p,
-                                                   diff_CS,
-                                                   lam,
-                                                   ml_temp.theta,
-                                                   ml_temp.phi,
-                                                   ml_temp.lmax,
-                                                   ml_temp.k,
-                                                   r,
-                                                   n,
-                                                   ml_temp.pi_l,
-                                                   ml_temp.tau_l,
-                                                   ml_temp.Tcu_El,
-                                                   ml_temp.Tcu_Ml,
-                                                   ml_temp.Tcl_El,
-                                                   ml_temp.Tcl_Ml,
-                                                   ml_temp.T11_El,
-                                                   ml_temp.T21_El,
-                                                   ml_temp.T11_Ml,
-                                                   ml_temp.T21_Ml,
-                                                   ml_temp.t_El,
-                                                   ml_temp.t_Ml,
-                                                   ml_temp.S1,
-                                                   ml_temp.S2,
-                                                   d_low,
-                                                   custom_cost),
-                                             bounds=loc_copy[i:i+2], method='bounded')
+                    result = minimize_scalar(
+                        cg.topology_gradient,
+                        args=(
+                            n_needle[:,m],
+                            ban_needle,
+                            Q_sca,
+                            Q_abs,
+                            Q_ext,
+                            p,
+                            diff_CS,
+                            lam,
+                            ml_temp.theta,
+                            ml_temp.phi,
+                            ml_temp.lmax,
+                            ml_temp.k,
+                            r,
+                            n,
+                            ml_temp.pi_l,
+                            ml_temp.tau_l,
+                            ml_temp.Tcu_El,
+                            ml_temp.Tcu_Ml,
+                            ml_temp.Tcl_El,
+                            ml_temp.Tcl_Ml,
+                            ml_temp.T11_El,
+                            ml_temp.T21_El,
+                            ml_temp.T11_Ml,
+                            ml_temp.T21_Ml,
+                            ml_temp.t_El,
+                            ml_temp.t_Ml,
+                            ml_temp.S1,
+                            ml_temp.S2,
+                            d_low,
+                            custom_cost,
+                        ),
+                        bounds=loc_copy[i:i+2],
+                        method='bounded',
+                    )
                                              
                     nfev += result.nfev
                     if np.abs(result.x - loc_temp[i]) >= 1 and np.abs(result.x - loc_temp[i+1]) >= 1:
@@ -381,20 +421,22 @@ def insert_needle(ml_init,
     
     return needle_status, n_needle, loc, dMF
 
-def deep_search(index,
-                ml_init,
-                mat_needle,
-                n_needle,
-                loc,
-                dMF,
-                mat_profile,
-                r,
-                n,
-                ban_needle,
-                d_low,
-                r_max,
-                custom_cost,
-                ):
+def deep_search(
+    index,
+    ml_init,
+    mat_needle,
+    n_needle,
+    loc,
+    dMF,
+    mat_profile,
+    r,
+    n,
+    ban_needle,
+    d_low,
+    r_max,
+    custom_cost,
+    lmax=None,
+    ):
                 
     MF_deep = np.zeros(mat_needle.size)
     indMF_deep = np.zeros(mat_needle.size)
@@ -435,14 +477,18 @@ def deep_search(index,
             ban_needle_new = np.hstack((ban_needle[:r_final], False, ban_needle[r_final-1:]))
             mat_profile_new = np.hstack((mat_profile[:r_final+1], mat_needle[m], mat_profile[r_final:]))
             
-            r_new, MF_deep_temp[z], Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new = refine_r(index,
-                                                                                                   ml_init,
-                                                                                                   r_new,
-                                                                                                   n_new,
-                                                                                                   ml_init.lam,
-                                                                                                   d_low,
-                                                                                                   r_max,
-                                                                                                   custom_cost)
+            r_new, MF_deep_temp[z], Q_sca_new, Q_abs_new, Q_ext_new,\
+                p_new, diff_CS_new = refine_r(
+                    index,
+                    ml_init,
+                    r_new,
+                    n_new,
+                    ml_init.lam,
+                    d_low,
+                    r_max,
+                    custom_cost,
+                )
+                
             r_out[m,z] = r_new
             n_out[m,z] = n_new
             ban_needle_out[m,z] = ban_needle_new
@@ -455,118 +501,132 @@ def deep_search(index,
             indMF_deep[m] = np.nanargmin(MF_deep_temp)
 
     if np.sum(np.isnan(MF_deep)) == MF_deep.size:
-        ml_init.update(r, n)
+        ml_init.update(r, n, lmax=lmax)
         Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-            S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(ml_init.lam,
-                                                              ml_init.theta,
-                                                              ml_init.phi,
-                                                              ml_init.lmax,
-                                                              ml_init.k,
-                                                              r,
-                                                              n,
-                                                              ml_init.psi,
-                                                              ml_init.dpsi,
-                                                              ml_init.ksi,
-                                                              ml_init.dksi,
-                                                              ml_init.pi_l,
-                                                              ml_init.tau_l,
-                                                              ml_init.eta_tilde)
+            S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+                ml_init.lam,
+                ml_init.theta,
+                ml_init.phi,
+                ml_init.lmax,
+                ml_init.k,
+                r,
+                n,
+                ml_init.psi,
+                ml_init.dpsi,
+                ml_init.ksi,
+                ml_init.dksi,
+                ml_init.pi_l,
+                ml_init.tau_l,
+                ml_init.eta_tilde,
+            )
+            
         nancheck = np.isnan(np.sum(t_El, axis=0))
         if np.sum(nancheck) > 0:
             lmax = np.min(np.argwhere(nancheck)) - 1
             ml_init.update(r, n, lmax=lmax)
             Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-                S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(ml_init.lam,
-                                                                  ml_init.theta,
-                                                                  ml_init.phi,
-                                                                  ml_init.lmax,
-                                                                  ml_init.k,
-                                                                  r,
-                                                                  n,
-                                                                  ml_init.psi,
-                                                                  ml_init.dpsi,
-                                                                  ml_init.ksi,
-                                                                  ml_init.dksi,
-                                                                  ml_init.pi_l,
-                                                                  ml_init.tau_l,
-                                                                  ml_init.eta_tilde)
+                S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+                    ml_init.lam,
+                    ml_init.theta,
+                    ml_init.phi,
+                    ml_init.lmax,
+                    ml_init.k,
+                    r,
+                    n,
+                    ml_init.psi,
+                    ml_init.dpsi,
+                    ml_init.ksi,
+                    ml_init.dksi,
+                    ml_init.pi_l,
+                    ml_init.tau_l,
+                    ml_init.eta_tilde,
+                )
 
         return n, r, ban_needle, mat_profile, Q_sca, Q_abs, Q_ext, p, diff_CS
     else:
         mat_final = np.nanargmin(MF_deep)
         n_out = n_out[mat_final,indMF_deep[mat_final]]
         r_out = r_out[mat_final,indMF_deep[mat_final]]
-        ml_init.update(r_out, n_out)
+        ml_init.update(r_out, n_out, lmax=lmax)
         Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-            S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(ml_init.lam,
-                                                              ml_init.theta,
-                                                              ml_init.phi,
-                                                              ml_init.lmax,
-                                                              ml_init.k,
-                                                              r_out,
-                                                              n_out,
-                                                              ml_init.psi,
-                                                              ml_init.dpsi,
-                                                              ml_init.ksi,
-                                                              ml_init.dksi,
-                                                              ml_init.pi_l,
-                                                              ml_init.tau_l,
-                                                              ml_init.eta_tilde)
+            S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+                ml_init.lam,
+                ml_init.theta,
+                ml_init.phi,
+                ml_init.lmax,
+                ml_init.k,
+                r_out,
+                n_out,
+                ml_init.psi,
+                ml_init.dpsi,
+                ml_init.ksi,
+                ml_init.dksi,
+                ml_init.pi_l,
+                ml_init.tau_l,
+                ml_init.eta_tilde,
+            )
                                                               
         nancheck = np.isnan(np.sum(t_El, axis=0))
         if np.sum(nancheck) > 0:
             lmax = np.min(np.argwhere(nancheck)) - 1
             ml_init.update(r_out, n_out, lmax=lmax)
             Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-                S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(ml_init.lam,
-                                                                  ml_init.theta,
-                                                                  ml_init.phi,
-                                                                  ml_init.lmax,
-                                                                  ml_init.k,
-                                                                  r_out,
-                                                                  n_out,
-                                                                  ml_init.psi,
-                                                                  ml_init.dpsi,
-                                                                  ml_init.ksi,
-                                                                  ml_init.dksi,
-                                                                  ml_init.pi_l,
-                                                                  ml_init.tau_l,
-                                                                  ml_init.eta_tilde)
+                S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+                    ml_init.lam,
+                    ml_init.theta,
+                    ml_init.phi,
+                    ml_init.lmax,
+                    ml_init.k,
+                    r_out,
+                    n_out,
+                    ml_init.psi,
+                    ml_init.dpsi,
+                    ml_init.ksi,
+                    ml_init.dksi,
+                    ml_init.pi_l,
+                    ml_init.tau_l,
+                    ml_init.eta_tilde,
+                )
         
         return n_out, r_out, ban_needle_out[mat_final,indMF_deep[mat_final]], mat_profile_out[mat_final,indMF_deep[mat_final]], Q_sca, Q_abs, Q_ext, p, diff_CS
 
-def run_needle(index,
-               mat_dict_cost,
-               mat_dict_plot,
-               mat_needle,
-               mat_profile,
-               r,
-               n,
-               ban_needle,
-               lam_cost,
-               theta_cost,
-               phi_cost,
-               lam_plot,
-               theta_plot,
-               phi_plot,
-               d_low,
-               r_max,
-               max_layers,
-               custom_cost,
-               ):
+def run_needle(
+    index,
+    mat_dict_cost,
+    mat_dict_plot,
+    mat_needle,
+    mat_profile,
+    r,
+    n,
+    ban_needle,
+    lam_cost,
+    theta_cost,
+    phi_cost,
+    lam_plot,
+    theta_plot,
+    phi_plot,
+    d_low,
+    r_max,
+    max_layers,
+    custom_cost,
+    lmax=None,
+    ):
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
-    ml_init.update(r, n)
+    ml_init.update(r, n, lmax=lmax)
 
     iteration = 1
-    r_new, cost, Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new = refine_r(index,
-                                                                                ml_init,
-                                                                                r,
-                                                                                n,
-                                                                                lam_cost,
-                                                                                d_low,
-                                                                                r_max,
-                                                                                custom_cost)
+    r_new, cost, Q_sca_new, Q_abs_new, Q_ext_new,\
+        p_new, diff_CS_new = refine_r(
+            index,
+            ml_init,
+            r,
+            n,
+            lam_cost,
+            d_low,
+            r_max,
+            custom_cost,
+        )
     
     mat_profile_new = mat_profile.copy()
     n_new = n.copy()
@@ -574,37 +634,44 @@ def run_needle(index,
     needle_status = 1
     while True:
         iteration += 1
-        needle_status, n_needle, loc, dMF = insert_needle(ml_init,
-                                                          mat_dict_cost,
-                                                          mat_needle,
-                                                          r_new,
-                                                          n_new,
-                                                          ban_needle_new,
-                                                          lam_cost,
-                                                          Q_sca_new,
-                                                          Q_abs_new,
-                                                          Q_ext_new,
-                                                          p_new,
-                                                          diff_CS_new,
-                                                          d_low,
-                                                          custom_cost)
+        needle_status, n_needle, loc, dMF, nan_break = insert_needle(
+            ml_init,
+            mat_dict_cost,
+            mat_needle,
+            r_new,
+            n_new,
+            ban_needle_new,
+            lam_cost,
+            Q_sca_new,
+            Q_abs_new,
+            Q_ext_new,
+            p_new,
+            diff_CS_new,
+            d_low,
+            custom_cost,
+            lmax=lmax,
+        )
+        
         if needle_status == 0:
             break
         
         n_new, r_new, ban_needle_new, mat_profile_new,\
-            Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new = deep_search(index,
-                                                                              ml_init,
-                                                                              mat_needle,
-                                                                              n_needle,
-                                                                              loc,
-                                                                              dMF,
-                                                                              mat_profile_new,
-                                                                              r_new,
-                                                                              n_new,
-                                                                              ban_needle_new,
-                                                                              d_low,
-                                                                              r_max,
-                                                                              custom_cost)
+            Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new = deep_search(
+                index,
+                ml_init,
+                mat_needle,
+                n_needle,
+                loc,
+                dMF,
+                mat_profile_new,
+                r_new,
+                n_new,
+                ban_needle_new,
+                d_low,
+                r_max,
+                custom_cost,
+                lmax=lmax,
+            )
         
         thickness = r_new[:-1] - r_new[1:]
         if np.sum(thickness < d_low) > 1:
@@ -649,14 +716,18 @@ def run_needle(index,
                     n_fin = np.delete(n_fin, l+1, axis=1)
                     r_fin = np.delete(r_fin, l)
                     mat_profile_fin = np.delete(mat_profile_fin, l+1)
-        r_new, cost, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin = refine_r(index,
-                                                                                    ml_init,
-                                                                                    r_fin,
-                                                                                    n_fin,
-                                                                                    lam_cost,
-                                                                                    d_low,
-                                                                                    r_max,
-                                                                                    custom_cost)
+        r_new, cost, Q_sca_fin, Q_abs_fin, Q_ext_fin,\
+            p_fin, diff_CS_fin = refine_r(
+                index,
+                ml_init,
+                r_fin,
+                n_fin,
+                lam_cost,
+                d_low,
+                r_max,
+                custom_cost,
+            )
+            
         n_new = n_fin.copy()
         mat_profile_new = mat_profile_fin.copy()
     
@@ -676,23 +747,25 @@ def run_needle(index,
     
     return r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost
 
-def radius_sweep(output_filename,
-                 r_min,
-                 r_max,
-                 N_sweep,
-                 d_low,
-                 max_layers,
-                 mat_profile,
-                 mat_needle,
-                 lam_cost,
-                 theta_cost,
-                 phi_cost,
-                 lam_plot,
-                 theta_plot,
-                 phi_plot,
-                 custom_cost,
-                 mat_data_dir=None,
-                 ):
+def radius_sweep(
+    output_filename,
+    r_min,
+    r_max,
+    N_sweep,
+    d_low,
+    max_layers,
+    mat_profile,
+    mat_needle,
+    lam_cost,
+    theta_cost,
+    phi_cost,
+    lam_plot,
+    theta_plot,
+    phi_plot,
+    custom_cost,
+    mat_data_dir=None,
+    lmax=None,
+    ):
 
     # Create n
     mat_type = list(set(np.hstack((mat_profile, mat_needle))))
@@ -728,29 +801,33 @@ def radius_sweep(output_filename,
     # Run Optimization
     if comm.rank == 0:
         print('### Initial Single-Layer Optimization (N_sweep = ' + str(N_sweep) + ')', flush=True)
-        print('    Progress: ', end='', flush=True)
+        print('    Progress: ' + '-'*comm.size + '|', flush=True)
+        print('              ', end='', flush=True)
     
     ban_needle = np.array([True]) # Outer(excluding embedding medium) to inner
     radius_init_proc = np.zeros(data_size[comm.rank])
     for nr in range(data_size[comm.rank]):
-        r_init, _, _, _, _, _, _, _ = run_needle(comm.rank,
-                                                 mat_dict_cost,
-                                                 mat_dict_plot,
-                                                 mat_needle,
-                                                 mat_profile,
-                                                 np.array([radius_list_proc[nr]]),
-                                                 n,
-                                                 ban_needle,
-                                                 lam_cost,
-                                                 theta_cost,
-                                                 phi_cost,
-                                                 lam_plot,
-                                                 theta_plot,
-                                                 phi_plot,
-                                                 d_low,
-                                                 r_max,
-                                                 max_layers,
-                                                 custom_cost)
+        r_init, _, _, _, _, _, _, _ = run_needle(
+            comm.rank,
+            mat_dict_cost,
+            mat_dict_plot,
+            mat_needle,
+            mat_profile,
+            np.array([radius_list_proc[nr]]),
+            n,
+            ban_needle,
+            lam_cost,
+            theta_cost,
+            phi_cost,
+            lam_plot,
+            theta_plot,
+            phi_plot,
+            d_low,
+            r_max,
+            max_layers,
+            custom_cost,
+            lmax=lmax,
+        )
         
         assert r_init.size == 1
         
@@ -786,7 +863,8 @@ def radius_sweep(output_filename,
     # Run Optimization
     if comm.rank == 0:
         print('\n### Topology Optimization (N_candidates = ' + str(N_sweep) + ')', flush=True)
-        print('    Progress: ', end='', flush=True)
+        print('    Progress: ' + '-'*comm.size + '|', flush=True)
+        print('              ', end='', flush=True)
     
     ban_needle = np.array([False]) # Outer(excluding embedding medium) to inner
     radius_proc = dict()
@@ -799,24 +877,28 @@ def radius_sweep(output_filename,
     N_layer_proc = np.zeros(data_size[comm.rank])
     cost_proc = np.zeros(data_size[comm.rank])
     for nr in range(data_size[comm.rank]):
-        r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost_fin = run_needle(comm.rank,
-                                                                                                 mat_dict_cost,
-                                                                                                 mat_dict_plot,
-                                                                                                 mat_needle,
-                                                                                                 mat_profile,
-                                                                                                 np.array([radius_list_proc[nr]]),
-                                                                                                 n,
-                                                                                                 ban_needle,
-                                                                                                 lam_cost,
-                                                                                                 theta_cost,
-                                                                                                 phi_cost,
-                                                                                                 lam_plot,
-                                                                                                 theta_plot,
-                                                                                                 phi_plot,
-                                                                                                 d_low,
-                                                                                                 r_max,
-                                                                                                 max_layers,
-                                                                                                 custom_cost)
+        r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin,\
+            p_fin, diff_CS_fin, cost_fin = run_needle(
+                comm.rank,
+                mat_dict_cost,
+                mat_dict_plot,
+                mat_needle,
+                mat_profile,
+                np.array([radius_list_proc[nr]]),
+                n,
+                ban_needle,
+                lam_cost,
+                theta_cost,
+                phi_cost,
+                lam_plot,
+                theta_plot,
+                phi_plot,
+                d_low,
+                r_max,
+                max_layers,
+                custom_cost,
+                lmax=lmax,
+            )
         
         radius_proc[nr] = r_fin
         N_layer_proc[nr] = r_fin.size
@@ -909,8 +991,19 @@ def radius_sweep(output_filename,
         diff_CS = diff_CS[cost_sort,:,:,:][0,:,:,:]
         N_layer = N_layer[cost_sort][0]
             
-        np.savez(output_filename, r=r_save, n=n_save,
-                 Q_sca=Q_sca, Q_abs=Q_abs, Q_ext=Q_ext, p=p, diff_CS=diff_CS, N_layer=N_layer,
-                 d_low=d_low, r_max=r_max, cost=cost)
+        np.savez(
+            output_filename,
+            r=r_save,
+            n=n_save,
+            Q_sca=Q_sca,
+            Q_abs=Q_abs,
+            Q_ext=Q_ext,
+            p=p,
+            diff_CS=diff_CS,
+            N_layer=N_layer,
+            d_low=d_low,
+            r_max=r_max,
+            cost=cost,
+        )
         
         print('\n### Optimization Done\n', flush=True)

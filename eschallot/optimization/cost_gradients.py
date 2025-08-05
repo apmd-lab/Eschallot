@@ -51,7 +51,9 @@ def cost(r,
                            Q_abs,
                            Q_ext,
                            p,
-                           diff_CS)
+                           diff_CS,
+                           t_El,
+                           t_Ml)
 
     return res
 
@@ -134,11 +136,15 @@ def shape_gradient(r,
                                Q_ext,
                                p,
                                diff_CS,
+                               t_El,
+                               t_Ml,
                                dQ_sca,
                                dQ_abs,
                                dQ_ext,
                                dp,
                                d_diff_CS,
+                               dt_El,
+                               dt_Ml,
                                r)
     
     return jac
@@ -262,6 +268,6 @@ def topology_gradient(r_needle,
                                                                                                           lam, theta, phi, lmax, k, r, n, psi, dpsi, d2psi, ksi, dksi, d2ksi, pi_l, tau_l, eta_tilde,
                                                                                                           Tcu_El, Tcu_Ml, Tcl_El, Tcl_Ml, T11_El, T21_El, T11_Ml, T21_Ml, t_El, t_Ml, S1, S2)
                 
-            dMF_val = cost_custom.gradient(Q_sca, Q_abs, Q_ext, p, diff_CS, dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, r)
+            dMF_val = cost_custom.gradient(Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, dt_El, dt_Ml, r)
             
             return dMF_val
