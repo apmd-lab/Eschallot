@@ -126,13 +126,9 @@ def refine_r(
         )
         
         r_new = result.x.copy()
-        cost = result.fun   
-    
-    except:
-        r_new = np.nan*r0
-        cost = np.nan
+        cost = result.fun
         
-    Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
+        Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
         S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
             lam,
             ml.theta,
@@ -148,7 +144,16 @@ def refine_r(
             ml.pi_l,
             ml.tau_l,
             ml.eta_tilde,
-        )                                                              
+        )       
+    
+    except:
+        r_new = np.nan*r0
+        cost = np.nan
+        Q_sca = None
+        Q_abs = None
+        Q_ext = None
+        p = None
+        diff_CS = None
     
     return r_new, cost, Q_sca, Q_abs, Q_ext, p, diff_CS
 
