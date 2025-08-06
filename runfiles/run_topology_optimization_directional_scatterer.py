@@ -19,7 +19,7 @@ mat_needle = np.array(['TiO2_Sarkar','SiO2_bulk','Si_Schinke','Ag_palik']) # 'Ti
 
 # Wavelength & angle ranges over which the cost function is defined
 lam_cost = np.array([450])
-theta_cost = np.array([0,40])*np.pi/180 # 0: forward, 180: backward
+theta_cost = np.array([0,70])*np.pi/180 # 0: forward, 180: backward
 phi_cost = np.array([0])*np.pi/180
 
 # Wavelength & angle ranges over which to compute the final efficiencies and phase function

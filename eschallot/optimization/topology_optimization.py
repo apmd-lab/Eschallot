@@ -102,31 +102,36 @@ def refine_r(
     constr = LinearConstraint(A, lb=np.ones(r0.size), ub=np.inf*np.ones(r0.size))
     
     verbose = 0
-    result = minimize(
-        cg.cost,
-        r0,
-        args=(
-            n,
-            index,
-            lam,
-            ml,
-            custom_cost,
-        ),
-        method='trust-constr',
-        jac=cg.shape_gradient,
-        constraints=constr,
-        bounds=bnd,
-        options={
-            'verbose': verbose,
-            'gtol': 1e-8,
-            'xtol': 1e-8,
-            'maxiter': 1000,
-        },
-    )
-
-    r_new = result.x.copy()
-    cost = result.fun        
-
+    try:
+        result = minimize(
+            cg.cost,
+            r0,
+            args=(
+                n,
+                index,
+                lam,
+                ml,
+                custom_cost,
+            ),
+            method='trust-constr',
+            jac=cg.shape_gradient,
+            constraints=constr,
+            bounds=bnd,
+            options={
+                'verbose': verbose,
+                'gtol': 1e-8,
+                'xtol': 1e-8,
+                'maxiter': 1000,
+            },
+        )
+        
+        r_new = result.x.copy()
+        cost = result.fun   
+    
+    except:
+        r_new = np.nan*r0
+        cost = np.nan
+        
     Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
         S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
             lam,
