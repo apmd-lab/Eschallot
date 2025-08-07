@@ -498,7 +498,7 @@ def efficiency_topology_derivatives(r_needle, d_needle, n_needle, Q_sca, Q_abs, 
         + (2/(k_ext_temp**2*Q_sca*np.pi*r[0]**2))*(np.real(np.conj(S1_temp)*dS1_temp)*sin_phi**2 + np.real(np.conj(S2_temp)*dS2_temp)*cos_phi**2)
     
     dt_El = np.expand_dims(dt_El, axis=-1)
-    dt_Ml = np.expand_dims(dt_El, axis=-1)
+    dt_Ml = np.expand_dims(dt_Ml, axis=-1)
     dQ_sca = np.expand_dims(dQ_sca, axis=-1)
     dQ_abs = np.expand_dims(dQ_abs, axis=-1)
     dQ_ext = np.expand_dims(dQ_ext, axis=-1)
