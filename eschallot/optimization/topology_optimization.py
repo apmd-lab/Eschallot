@@ -88,7 +88,7 @@ def refine_r(
     d_low,
     r_max,
     custom_cost,
-    verbose=False,
+    verbose=0,
     ):
 
     ub = np.inf*np.ones(r0.size)
@@ -118,7 +118,7 @@ def refine_r(
             constraints=constr,
             bounds=bnd,
             options={
-                'verbose': 2 if verbose and comm.rank==0 else 0,
+                'verbose': 2 if verbose >= 2 and comm.rank==0 else 0,
                 'gtol': 1e-8,
                 'xtol': 1e-8,
                 'maxiter': 1000,
@@ -226,7 +226,7 @@ def insert_needle(
     d_low,
     custom_cost,
     lmax=None,
-    verbose=False,
+    verbose=0,
     ):
     """ mat_dict: database of all materials in the multilayer stack
         mat_needle: list of materials that can be inserted as needles (array of strings)
@@ -364,7 +364,7 @@ def insert_needle(
             intervals = np.size(loc_temp)
             loc_copy = loc_temp.copy()
             cnt = 0
-            if verbose and comm.rank==0:
+            if verbose >= 1 and comm.rank==0:
                 print('Minima Locations Identified    : ', end='', flush=True)
                 for ind in range(intervals):
                     print(str(np.round(loc_copy[ind], 2)) + ' | ', end='', flush=True)
@@ -418,7 +418,7 @@ def insert_needle(
                         ),
                         bounds=loc_copy[i:i+2],
                         method='bounded',
-                        options={'disp': 3 if verbose and comm.rank==0 else 0},
+                        options={'disp': 3 if verbose >= 2 and comm.rank==0 else 0},
                     )
                                              
                     nfev += result.nfev
@@ -464,7 +464,7 @@ def deep_search(
     r_max,
     custom_cost,
     lmax=None,
-    verbose=False,
+    verbose=0,
     ):
                 
     MF_deep = np.zeros(mat_needle.size)
@@ -640,8 +640,15 @@ def run_needle(
     max_layers,
     custom_cost,
     lmax=None,
-    verbose=False,
+    verbose=0,
     ):
+    
+    if verbose >= 1 and comm.rank == 0:
+        print('\n### Optimization Start', flush=True)
+        print('Initial Design: ', end='', flush=True)
+        for ind in range(r_new.size):
+            print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+        print('', flush=True)
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
     ml_init.update(r, n, lmax=lmax)
@@ -660,8 +667,8 @@ def run_needle(
             verbose=verbose,
         )
     
-    if verbose and comm.rank == 0:
-        print('Current Design: ', end='', flush=True)
+    if verbose >= 1 and comm.rank == 0:
+        print('Iteration ' + str(iteration) + ' Design: ', end='', flush=True)
         for ind in range(r_new.size):
             print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
@@ -691,7 +698,7 @@ def run_needle(
             verbose=verbose,
         )
         
-        if verbose and comm.rank == 0:
+        if verbose >= 1 and comm.rank == 0:
             if needle_status:
                 print('Needle Insertion Location Found', flush=True)
             else:
@@ -719,8 +726,8 @@ def run_needle(
                 verbose=verbose,
             )
         
-        if verbose and comm.rank == 0:
-            print('Current Design: ', end='', flush=True)
+        if verbose >= 1 and comm.rank == 0:
+            print('Iteration ' + str(iteration) + ' Design: ', end='', flush=True)
             for ind in range(r_new.size):
                 print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
             print('', flush=True)
@@ -797,6 +804,13 @@ def run_needle(
     
     Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
                 S1_mpE, S1_mpM, S2_mpE, S2_mpM = sim.simulate(lam_plot, theta_plot, phi_plot, r_fin, n_fin)
+    
+    if verbose >= 1 and comm.rank == 0:
+        print('### Optimization Done', flush=True)
+        print('Final Design: ', end='', flush=True)
+        for ind in range(r_fin.size):
+            print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+        print('', flush=True)
     
     return r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost
 
