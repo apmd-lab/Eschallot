@@ -736,6 +736,9 @@ def run_needle(
             else:
                 print('All Needle Insertion Locations Invalid', flush=True)
         
+        if needle_status == 0:
+            break
+        
         if verbose >= 1 and comm.rank == 0:
             print('\nIteration ' + str(iteration) + ' Design: ', end='', flush=True)
             for ind in range(r_new.size):
