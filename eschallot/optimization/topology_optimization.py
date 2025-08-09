@@ -848,6 +848,7 @@ def radius_sweep(
     custom_cost,
     mat_data_dir=None,
     lmax=None,
+    N_final=1,
     verbose=False,
     ):
 
@@ -1068,14 +1069,14 @@ def radius_sweep(
         # Save Best Design
         cost_sort = np.argsort(cost)
         cost = cost[cost_sort]
-        r_save = r_save[cost_sort,:][0,:]
-        n_save = n_save[cost_sort,:,:][0,:,:]
-        Q_sca = Q_sca[cost_sort,:][0,:]
-        Q_abs = Q_abs[cost_sort,:][0,:]
-        Q_ext = Q_ext[cost_sort,:][0,:]
-        p = p[cost_sort,:,:,:][0,:,:,:]
-        diff_CS = diff_CS[cost_sort,:,:,:][0,:,:,:]
-        N_layer = N_layer[cost_sort][0]
+        r_save = r_save[cost_sort,:][:N_final,:]
+        n_save = n_save[cost_sort,:,:][:N_final,:,:]
+        Q_sca = Q_sca[cost_sort,:][:N_final,:]
+        Q_abs = Q_abs[cost_sort,:][:N_final,:]
+        Q_ext = Q_ext[cost_sort,:][:N_final,:]
+        p = p[cost_sort,:,:,:][:N_final,:,:,:]
+        diff_CS = diff_CS[cost_sort,:,:,:][:N_final,:,:,:]
+        N_layer = N_layer[cost_sort][:N_final]
             
         np.savez(
             output_filename,
