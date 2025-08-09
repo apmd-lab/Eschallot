@@ -364,6 +364,22 @@ def insert_needle(
             intervals = np.size(loc_temp)
             loc_copy = loc_temp.copy()
             cnt = 0
+            if verbose and comm.rank==0:
+                print('Minima Locations Identified    : ', end='', flush=True)
+                for ind in range(intervals):
+                    print(str(np.round(loc_copy[ind], 2)) + ' | ', end='', flush=True)
+                print('', flush=True)
+                
+                print('Topology Derivatives at Minima : ', end='', flush=True)
+                for ind in range(dMF_temp.size):
+                    print(str(dMF_temp[ind]) + ' | ', end='', flush=True)
+                print('', flush=True)
+                
+                print('Intervals Being Searched       :   ', end='', flush=True)
+                for ind in range(evaluate.size):
+                    print(str(evaluate[ind]) + ' | ', end='', flush=True)
+                print('', flush=True)
+                
             for i in range(intervals-2, -1, -1):
                 if evaluate[i]:
                     result = minimize_scalar(
@@ -402,7 +418,7 @@ def insert_needle(
                         ),
                         bounds=loc_copy[i:i+2],
                         method='bounded',
-                        options={'disp': 3 if verbose else 0},
+                        options={'disp': 3 if verbose and comm.rank==0 else 0},
                     )
                                              
                     nfev += result.nfev
