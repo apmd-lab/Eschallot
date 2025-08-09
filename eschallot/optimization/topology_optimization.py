@@ -372,7 +372,7 @@ def insert_needle(
                 
                 print('Topology Derivatives at Minima : ', end='', flush=True)
                 for ind in range(dMF_temp.size):
-                    print(str(dMF_temp[ind]) + ' | ', end='', flush=True)
+                    print(str(np.round(dMF_temp[ind], 2)) + ' | ', end='', flush=True)
                 print('', flush=True)
                 
                 print('Intervals Being Searched       :   ', end='', flush=True)
@@ -660,6 +660,12 @@ def run_needle(
             verbose=verbose,
         )
     
+    if verbose and comm.rank == 0:
+        print('Current Design: ', end='', flush=True)
+        for ind in range(r_new.size):
+            print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+        print('', flush=True)
+    
     mat_profile_new = mat_profile.copy()
     n_new = n.copy()
     ban_needle_new = ban_needle.copy()
@@ -685,6 +691,12 @@ def run_needle(
             verbose=verbose,
         )
         
+        if verbose and comm.rank == 0:
+            if needle_status:
+                print('Needle Insertion Location Found', flush=True)
+            else:
+                print('Needle Insertion Not Possible', flush=True)
+        
         if needle_status == 0:
             break
         
@@ -706,6 +718,12 @@ def run_needle(
                 lmax=lmax,
                 verbose=verbose,
             )
+        
+        if verbose and comm.rank == 0:
+            print('Current Design: ', end='', flush=True)
+            for ind in range(r_new.size):
+                print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+            print('', flush=True)
         
         thickness = r_new[:-1] - r_new[1:]
         if np.sum(thickness < d_low) > 1:
