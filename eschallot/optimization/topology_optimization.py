@@ -146,7 +146,10 @@ def refine_r(
             ml.eta_tilde,
         )       
     
-    except:
+    except Exception as e:
+        if verbose >= 1:
+            print(e, flush=True)
+            
         r_new = np.nan*r0
         cost = np.nan
         Q_sca = None
