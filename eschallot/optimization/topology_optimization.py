@@ -118,7 +118,7 @@ def refine_r(
             constraints=constr,
             bounds=bnd,
             options={
-                'verbose': 2 if verbose else 0,
+                'verbose': 2 if verbose and comm.rank==0 else 0,
                 'gtol': 1e-8,
                 'xtol': 1e-8,
                 'maxiter': 1000,
@@ -402,6 +402,7 @@ def insert_needle(
                         ),
                         bounds=loc_copy[i:i+2],
                         method='bounded',
+                        options={'disp': 3 if verbose else 0},
                     )
                                              
                     nfev += result.nfev
