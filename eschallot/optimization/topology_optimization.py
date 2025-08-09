@@ -531,6 +531,8 @@ def deep_search(
             indMF_deep[m] = np.nanargmin(MF_deep_temp)
 
     if np.sum(np.isnan(MF_deep)) == MF_deep.size:
+        needle_status = 0
+    
         ml_init.update(r, n, lmax=lmax)
         Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
             S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
@@ -574,6 +576,8 @@ def deep_search(
 
         return n, r, ban_needle, mat_profile, Q_sca, Q_abs, Q_ext, p, diff_CS
     else:
+        needle_status = 1
+    
         mat_final = np.nanargmin(MF_deep)
         n_out = n_out[mat_final,indMF_deep[mat_final]]
         r_out = r_out[mat_final,indMF_deep[mat_final]]
@@ -618,7 +622,7 @@ def deep_search(
                     ml_init.eta_tilde,
                 )
         
-        return n_out, r_out, ban_needle_out[mat_final,indMF_deep[mat_final]], mat_profile_out[mat_final,indMF_deep[mat_final]], Q_sca, Q_abs, Q_ext, p, diff_CS
+        return n_out, r_out, ban_needle_out[mat_final,indMF_deep[mat_final]], mat_profile_out[mat_final,indMF_deep[mat_final]], Q_sca, Q_abs, Q_ext, p, diff_CS, needle_status
 
 def run_needle(
     index,
@@ -700,15 +704,15 @@ def run_needle(
         
         if verbose >= 1 and comm.rank == 0:
             if needle_status:
-                print('Needle Insertion Location Found', flush=True)
+                print('\nNeedle Insertion Location Found', flush=True)
             else:
-                print('Needle Insertion Not Possible', flush=True)
+                print('\nNeedle Insertion Not Possible', flush=True)
         
         if needle_status == 0:
             break
         
         n_new, r_new, ban_needle_new, mat_profile_new,\
-            Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new = deep_search(
+            Q_sca_new, Q_abs_new, Q_ext_new, p_new, diff_CS_new, needle_status = deep_search(
                 index,
                 ml_init,
                 mat_needle,
@@ -727,7 +731,13 @@ def run_needle(
             )
         
         if verbose >= 1 and comm.rank == 0:
-            print('Iteration ' + str(iteration) + ' Design: ', end='', flush=True)
+            if needle_status:
+                print('Deep Search Done', flush=True)
+            else:
+                print('All Needle Insertion Locations Invalid', flush=True)
+        
+        if verbose >= 1 and comm.rank == 0:
+            print('\nIteration ' + str(iteration) + ' Design: ', end='', flush=True)
             for ind in range(r_new.size):
                 print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
             print('', flush=True)
@@ -806,7 +816,7 @@ def run_needle(
                 S1_mpE, S1_mpM, S2_mpE, S2_mpM = sim.simulate(lam_plot, theta_plot, phi_plot, r_fin, n_fin)
     
     if verbose >= 1 and comm.rank == 0:
-        print('### Optimization Done', flush=True)
+        print('\n### Optimization Done', flush=True)
         print('Final Design: ', end='', flush=True)
         for ind in range(r_fin.size):
             print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
