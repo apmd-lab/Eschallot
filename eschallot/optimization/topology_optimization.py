@@ -226,7 +226,7 @@ def insert_needle(
     d_low,
     custom_cost,
     lmax=None,
-    verbose=verbose,
+    verbose=False,
     ):
     """ mat_dict: database of all materials in the multilayer stack
         mat_needle: list of materials that can be inserted as needles (array of strings)
