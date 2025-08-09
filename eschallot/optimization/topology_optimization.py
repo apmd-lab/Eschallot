@@ -88,6 +88,7 @@ def refine_r(
     d_low,
     r_max,
     custom_cost,
+    verbose=False,
     ):
 
     ub = np.inf*np.ones(r0.size)
@@ -101,7 +102,6 @@ def refine_r(
             A[l,l+1] = -1
     constr = LinearConstraint(A, lb=np.ones(r0.size), ub=np.inf*np.ones(r0.size))
     
-    verbose = 0
     try:
         result = minimize(
             cg.cost,
@@ -118,7 +118,7 @@ def refine_r(
             constraints=constr,
             bounds=bnd,
             options={
-                'verbose': verbose,
+                'verbose': 2 if verbose else 0,
                 'gtol': 1e-8,
                 'xtol': 1e-8,
                 'maxiter': 1000,
@@ -226,6 +226,7 @@ def insert_needle(
     d_low,
     custom_cost,
     lmax=None,
+    verbose=verbose,
     ):
     """ mat_dict: database of all materials in the multilayer stack
         mat_needle: list of materials that can be inserted as needles (array of strings)
@@ -446,6 +447,7 @@ def deep_search(
     r_max,
     custom_cost,
     lmax=None,
+    verbose=False,
     ):
                 
     MF_deep = np.zeros(mat_needle.size)
@@ -497,6 +499,7 @@ def deep_search(
                     d_low,
                     r_max,
                     custom_cost,
+                    verbose=verbose,
                 )
                 
             r_out[m,z] = r_new
@@ -620,6 +623,7 @@ def run_needle(
     max_layers,
     custom_cost,
     lmax=None,
+    verbose=False,
     ):
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
@@ -636,6 +640,7 @@ def run_needle(
             d_low,
             r_max,
             custom_cost,
+            verbose=verbose,
         )
     
     mat_profile_new = mat_profile.copy()
@@ -660,6 +665,7 @@ def run_needle(
             d_low,
             custom_cost,
             lmax=lmax,
+            verbose=verbose,
         )
         
         if needle_status == 0:
@@ -681,6 +687,7 @@ def run_needle(
                 r_max,
                 custom_cost,
                 lmax=lmax,
+                verbose=verbose,
             )
         
         thickness = r_new[:-1] - r_new[1:]
@@ -736,6 +743,7 @@ def run_needle(
                 d_low,
                 r_max,
                 custom_cost,
+                verbose=verbose,
             )
             
         n_new = n_fin.copy()
@@ -775,6 +783,7 @@ def radius_sweep(
     custom_cost,
     mat_data_dir=None,
     lmax=None,
+    verbose=False,
     ):
 
     # Create n
@@ -837,6 +846,7 @@ def radius_sweep(
             max_layers,
             custom_cost,
             lmax=lmax,
+            verbose=verbose,
         )
         
         assert r_init.size == 1
@@ -908,6 +918,7 @@ def radius_sweep(
                 max_layers,
                 custom_cost,
                 lmax=lmax,
+                verbose=verbose,
             )
         
         radius_proc[nr] = r_fin

@@ -28,72 +28,95 @@ theta_plot = np.linspace(0, 180, 361)*np.pi/180 # 0: forward, 180: backward
 phi_plot = np.array([0,90])*np.pi/180
 
 class cost_obj:
-    def __init__(self, weight_fwd, weight_bwd, weight_high_order, ind_wvl_fwd, ind_wvl_bwd):
-        self.weight_fwd = weight_fwd
-        self.weight_bwd = weight_bwd
+    def __init__(
+            self,
+            weight_fwd_diff,
+            weight_fwd_mag,
+            weight_bwd_diff,
+            weight_bwd_mag,
+            weight_high_order,
+            ind_wvl_fwd,
+            ind_wvl_bwd,
+        ):
+        
+        self.weight_fwd_diff = weight_fwd_diff
+        self.weight_fwd_mag = weight_fwd_mag
+        self.weight_bwd_diff = weight_bwd_diff
+        self.weight_bwd_mag = weight_bwd_mag
         self.weight_high_order = weight_high_order
         self.ind_wvl_fwd = ind_wvl_fwd
         self.ind_wvl_bwd = ind_wvl_bwd
     
     def cost(self, Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml):
-        cost_fwd = 0
+        cost_fwd_diff = 0
+        cost_fwd_mag = 0
         if self.ind_wvl_fwd is not None:
             for i in self.ind_wvl_fwd:
-                cost_fwd += np.abs(t_El[i,0] - t_Ml[i,0])**2
+                cost_fwd_diff += np.abs(t_El[i,0] - t_Ml[i,0])**2
+                cost_fwd_mag -= np.abs(t_El[i,0])**2 + np.abs(t_Ml[i,0])**2
+        cost_fwd = self.weight_fwd_diff*cost_fwd_diff + self.weight_fwd_mag*cost_fwd_mag
         
-        cost_bwd = 0
+        cost_bwd_diff = 0
+        cost_bwd_mag = 0
         if self.ind_wvl_bwd is not None:
             for i in self.ind_wvl_bwd:
-                cost_bwd = np.abs(t_El[i,0] + t_Ml[i,0])**2
+                cost_bwd_diff += np.abs(t_El[i,0] + t_Ml[i,0])**2
+                cost_bwd_mag -= np.abs(t_El[i,0])**2 + np.abs(t_Ml[i,0])**2
+        cost_bwd = self.weight_bwd_diff*cost_bwd_diff + self.weight_bwd_mag*cost_bwd_mag
         
         cost_high_order = np.sum(np.abs(t_El[:,1:])**2 + np.abs(t_Ml[:,1:])**2)
         
-        cost = self.weight_fwd*cost_fwd + self.weight_bwd*cost_bwd + self.weight_high_order*cost_high_order
+        cost = cost_fwd + cost_bwd + self.weight_high_order*cost_high_order
+#        print('', flush=True)
+#        print(cost, flush=True)
+#        print(t_El[:,:2], flush=True)
+#        print(t_Ml[:,:2], flush=True)
         
         return cost
     
     def gradient(self, Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, dt_El, dt_Ml, r):
-        jac_fwd = np.zeros(r.size)
+        jac_fwd_diff = np.zeros(r.size)
+        jac_fwd_mag = np.zeros(r.size)
         if self.ind_wvl_fwd is not None:
             for i in self.ind_wvl_fwd:
-                try:
-                    jac_fwd += 2*(np.real(t_El[i,0] - t_Ml[i,0])*np.real(dt_El[i,0,:] - dt_Ml[i,0,:]) \
-                                + np.imag(t_El[i,0] - t_Ml[i,0])*np.imag(dt_El[i,0,:] - dt_Ml[i,0,:]))
-                except:
-                    print('t_El ' + str(np.real(t_El[i,0] - t_Ml[i,0]).shape))
-                    print('dt_El original ' + str(dt_El.shape))
-                    print('dt_Ml original ' + str(dt_Ml.shape))
-                    print('dt_El-dt_Ml ' + str(np.real(dt_El[i,0,:] - dt_Ml[i,0,:]).shape))
-                    print('dt_El ' + str(dt_El[i,0,:].shape))
-                    print('dt_Ml ' + str(dt_Ml[i,0,:].shape))
-                    print('dt_test ' + str(dt_El[0,0,:].shape))
-                    print('t_El*dt_El ' + str((np.real(t_El[i,0] - t_Ml[i,0])*np.real(dt_El[i,0,:] - dt_Ml[i,0,:])).shape))
-                    print('jac_fwd ' + str(jac_fwd.shape))
-                    assert False
+                jac_fwd_diff += 2*(np.real(t_El[i,0] - t_Ml[i,0])*np.real(dt_El[i,0,:] - dt_Ml[i,0,:]) \
+                                 + np.imag(t_El[i,0] - t_Ml[i,0])*np.imag(dt_El[i,0,:] - dt_Ml[i,0,:]))
+                jac_fwd_mag -= 2*(np.real(t_El[i,0])*np.real(dt_El[i,0,:]) + np.imag(t_El[i,0])*np.imag(dt_El[i,0,:]) \
+                                + np.real(t_Ml[i,0])*np.real(dt_Ml[i,0,:]) + np.imag(t_Ml[i,0])*np.imag(dt_Ml[i,0,:]))
+        jac_fwd = self.weight_fwd_diff*jac_fwd_diff + self.weight_fwd_mag*jac_fwd_mag
         
-        jac_bwd = np.zeros(r.size)
+        jac_bwd_diff = np.zeros(r.size)
+        jac_bwd_mag = np.zeros(r.size)
         if self.ind_wvl_bwd is not None:
             for i in self.ind_wvl_bwd:
-                jac_bwd += 2*(np.real(t_El[i,0] + t_Ml[i,0])*np.real(dt_El[i,0,:] + dt_Ml[i,0,:]) \
-                            + np.imag(t_El[i,0] + t_Ml[i,0])*np.imag(dt_El[i,0,:] + dt_Ml[i,0,:]))
+                jac_bwd_diff += 2*(np.real(t_El[i,0] + t_Ml[i,0])*np.real(dt_El[i,0,:] + dt_Ml[i,0,:]) \
+                                 + np.imag(t_El[i,0] + t_Ml[i,0])*np.imag(dt_El[i,0,:] + dt_Ml[i,0,:]))
+                jac_bwd_mag -= 2*(np.real(t_El[i,0])*np.real(dt_El[i,0,:]) + np.imag(t_El[i,0])*np.imag(dt_El[i,0,:]) \
+                                + np.real(t_Ml[i,0])*np.real(dt_Ml[i,0,:]) + np.imag(t_Ml[i,0])*np.imag(dt_Ml[i,0,:]))
+        jac_bwd = self.weight_bwd_diff*jac_bwd_diff + self.weight_bwd_mag*jac_bwd_mag
         
-        jac_high_order = 2*np.sum(np.real(t_El[:,1:])*np.real(dt_El[:,1:,:]) + np.imag(t_El[:,1:])*np.imag(dt_El[:,1:]) \
-                                + np.real(t_Ml[:,1:])*np.real(dt_Ml[:,1:,:]) + np.imag(t_Ml[:,1:])*np.imag(dt_Ml[:,1:]))
+        jac_high_order = 2*np.sum(np.real(t_El[:,1:])*np.real(dt_El[:,1:,:]) + np.imag(t_El[:,1:])*np.imag(dt_El[:,1:,:]) \
+                                + np.real(t_Ml[:,1:])*np.real(dt_Ml[:,1:,:]) + np.imag(t_Ml[:,1:])*np.imag(dt_Ml[:,1:,:]))
         
-        jac = self.weight_fwd*jac_fwd + self.weight_bwd*jac_bwd + self.weight_high_order*jac_high_order
+        jac = jac_fwd + jac_bwd + self.weight_high_order*jac_high_order
+        #print(r, flush=True)
     
         return jac
 
 ## Define Cost Function
-weight_fwd = 1.0
-weight_bwd = 1.0
-weight_high_order = 0.1
+weight_fwd_diff = 1e3
+weight_fwd_mag = 1e2
+weight_bwd_diff = 1e3
+weight_bwd_mag = 1e2
+weight_high_order = 1e2
 ind_wvl_fwd = [0]
 ind_wvl_bwd = None
 
 custom_cost = cost_obj(
-    weight_fwd=weight_fwd,
-    weight_bwd=weight_bwd,
+    weight_fwd_diff=weight_fwd_diff,
+    weight_fwd_mag=weight_fwd_mag,
+    weight_bwd_diff=weight_bwd_diff,
+    weight_bwd_mag=weight_bwd_mag,
     weight_high_order=weight_high_order,
     ind_wvl_fwd=ind_wvl_fwd,
     ind_wvl_bwd=ind_wvl_bwd,
@@ -101,9 +124,9 @@ custom_cost = cost_obj(
 
 # Sweep Settings
 r_min = 10
-r_max = 500
+r_max = 250
 N_sweep = int(r_max - r_min) + 1
-d_low = 1
+d_low = 5
 max_layers = None
 
 if 'Ag_palik' in mat_needle:
@@ -129,6 +152,7 @@ topopt.radius_sweep(output_filename,
                     custom_cost,
                     mat_data_dir=None,
                     lmax=None,
+                    verbose=True,
                     )
 t2 = time.time()
 
