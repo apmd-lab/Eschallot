@@ -574,7 +574,7 @@ def deep_search(
                     ml_init.eta_tilde,
                 )
 
-        return n, r, ban_needle, mat_profile, Q_sca, Q_abs, Q_ext, p, diff_CS
+        return n, r, ban_needle, mat_profile, Q_sca, Q_abs, Q_ext, p, diff_CS, needle_status
     else:
         needle_status = 1
     
