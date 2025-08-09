@@ -646,8 +646,8 @@ def run_needle(
     if verbose >= 1 and comm.rank == 0:
         print('\n### Optimization Start', flush=True)
         print('Initial Design: ', end='', flush=True)
-        for ind in range(r_new.size):
-            print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+        for ind in range(r.size):
+            print(str(np.round(r[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
