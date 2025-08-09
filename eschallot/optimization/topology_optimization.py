@@ -118,7 +118,7 @@ def refine_r(
             constraints=constr,
             bounds=bnd,
             options={
-                'verbose': 2 if verbose >= 2 and comm.rank==0 else 0,
+                'verbose': 2 if verbose >= 3 and comm.rank==0 else 0,
                 'gtol': 1e-8,
                 'xtol': 1e-8,
                 'maxiter': 1000,
@@ -367,7 +367,7 @@ def insert_needle(
             intervals = np.size(loc_temp)
             loc_copy = loc_temp.copy()
             cnt = 0
-            if verbose >= 1 and comm.rank==0:
+            if verbose >= 2 and comm.rank==0:
                 print('Minima Locations Identified    : ', end='', flush=True)
                 for ind in range(intervals):
                     print(str(np.round(loc_copy[ind], 2)) + ' | ', end='', flush=True)
@@ -421,7 +421,7 @@ def insert_needle(
                         ),
                         bounds=loc_copy[i:i+2],
                         method='bounded',
-                        options={'disp': 3 if verbose >= 2 and comm.rank==0 else 0},
+                        options={'disp': 3 if verbose >= 3 and comm.rank==0 else 0},
                     )
                                              
                     nfev += result.nfev
@@ -705,7 +705,7 @@ def run_needle(
             verbose=verbose,
         )
         
-        if verbose >= 1 and comm.rank == 0:
+        if verbose >= 2 and comm.rank == 0:
             if needle_status:
                 print('\nNeedle Insertion Location Found', flush=True)
             else:
@@ -733,7 +733,7 @@ def run_needle(
                 verbose=verbose,
             )
         
-        if verbose >= 1 and comm.rank == 0:
+        if verbose >= 2 and comm.rank == 0:
             if needle_status:
                 print('Deep Search Done', flush=True)
             else:
