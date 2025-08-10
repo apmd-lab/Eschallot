@@ -86,14 +86,17 @@ def refine_r(
     n,
     lam,
     d_low,
+    r_min,
     r_max,
     custom_cost,
     verbose=0,
     ):
 
+    lb = np.zeros(r0.size)
+    lb[0] = r_min
     ub = np.inf*np.ones(r0.size)
     ub[0] = r_max
-    bnd = Bounds(np.zeros(r0.size), ub)
+    bnd = Bounds(lb, ub)
 
     A = np.zeros((r0.size, r0.size))
     for l in range(r0.size):
@@ -464,6 +467,7 @@ def deep_search(
     n,
     ban_needle,
     d_low,
+    r_min,
     r_max,
     custom_cost,
     lmax=None,
@@ -517,6 +521,7 @@ def deep_search(
                     n_new,
                     ml_init.lam,
                     d_low,
+                    r_min,
                     r_max,
                     custom_cost,
                     verbose=verbose,
@@ -643,6 +648,7 @@ def run_needle(
     theta_plot,
     phi_plot,
     d_low,
+    r_min,
     r_max,
     max_layers,
     custom_cost,
@@ -669,6 +675,7 @@ def run_needle(
             n,
             lam_cost,
             d_low,
+            r_min,
             r_max,
             custom_cost,
             verbose=verbose,
@@ -727,6 +734,7 @@ def run_needle(
                 n_new,
                 ban_needle_new,
                 d_low,
+                r_min,
                 r_max,
                 custom_cost,
                 lmax=lmax,
@@ -799,6 +807,7 @@ def run_needle(
                 n_fin,
                 lam_cost,
                 d_low,
+                r_min,
                 r_max,
                 custom_cost,
                 verbose=verbose,
@@ -908,6 +917,7 @@ def radius_sweep(
             theta_plot,
             phi_plot,
             d_low,
+            r_min,
             r_max,
             max_layers,
             custom_cost,
@@ -980,6 +990,7 @@ def radius_sweep(
                 theta_plot,
                 phi_plot,
                 d_low,
+                r_min,
                 r_max,
                 max_layers,
                 custom_cost,
