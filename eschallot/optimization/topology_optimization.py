@@ -662,6 +662,9 @@ def run_needle(
         for ind in range(r.size):
             print(str(np.round(r[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
+        for ind in range(n.shape[1]):
+            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
+        print('', flush=True)
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
     ml_init.update(r, n, lmax=lmax)
@@ -685,6 +688,9 @@ def run_needle(
         print('Iteration ' + str(iteration) + ' Design: ', end='', flush=True)
         for ind in range(r_new.size):
             print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+        print('', flush=True)
+        for ind in range(n.shape[1]):
+            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     mat_profile_new = mat_profile.copy()
@@ -755,6 +761,9 @@ def run_needle(
             for ind in range(r_new.size):
                 print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
             print('', flush=True)
+            for ind in range(n_new.shape[1]):
+                print(str(np.round(n_new[0,ind], 2)) + ' | ', end='', flush=True)
+            print('', flush=True)
         
         thickness = r_new[:-1] - r_new[1:]
         if np.sum(thickness < d_low) > 1:
@@ -799,6 +808,16 @@ def run_needle(
                     n_fin = np.delete(n_fin, l+1, axis=1)
                     r_fin = np.delete(r_fin, l)
                     mat_profile_fin = np.delete(mat_profile_fin, l+1)
+                    
+        if verbose >= 1 and comm.rank == 0:
+            print('\nLayer Clean-Up: ', end='', flush=True)
+            for ind in range(r_fin.size):
+                print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+            print('', flush=True)
+            for ind in range(n_fin.shape[1]):
+                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
+            print('', flush=True)
+        
         r_new, cost, Q_sca_fin, Q_abs_fin, Q_ext_fin,\
             p_fin, diff_CS_fin = refine_r(
                 index,
@@ -812,6 +831,15 @@ def run_needle(
                 custom_cost,
                 verbose=verbose,
             )
+            
+        if verbose >= 1 and comm.rank == 0:
+            print('\nLayer Clean-Up (post refinement): ', end='', flush=True)
+            for ind in range(r_new.size):
+                print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+            print('', flush=True)
+            for ind in range(n_fin.shape[1]):
+                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
+            print('', flush=True)
             
         n_new = n_fin.copy()
         mat_profile_new = mat_profile_fin.copy()
@@ -835,6 +863,9 @@ def run_needle(
         print('Final Design: ', end='', flush=True)
         for ind in range(r_fin.size):
             print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+        print('', flush=True)
+        for ind in range(n_fin.shape[1]):
+            print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     return r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost
