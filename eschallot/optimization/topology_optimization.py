@@ -105,61 +105,61 @@ def refine_r(
             A[l,l+1] = -1
     constr = LinearConstraint(A, lb=np.ones(r0.size), ub=np.inf*np.ones(r0.size))
     
-    #try:
-    result = minimize(
-        cg.cost,
-        r0,
-        args=(
-            n,
-            index,
+    try:
+        result = minimize(
+            cg.cost,
+            r0,
+            args=(
+                n,
+                index,
+                lam,
+                ml,
+                custom_cost,
+            ),
+            method='trust-constr',
+            jac=cg.shape_gradient,
+            constraints=constr,
+            bounds=bnd,
+            options={
+                'verbose': 2 if verbose >= 3 and comm.rank==0 else 0,
+                'gtol': 1e-8,
+                'xtol': 1e-8,
+                'maxiter': 1000,
+            },
+        )
+        
+        r_new = result.x.copy()
+        cost = result.fun
+        
+        Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
+        S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
             lam,
-            ml,
-            custom_cost,
-        ),
-        method='trust-constr',
-        jac=cg.shape_gradient,
-        constraints=constr,
-        bounds=bnd,
-        options={
-            'verbose': 2 if verbose >= 3 and comm.rank==0 else 0,
-            'gtol': 1e-8,
-            'xtol': 1e-8,
-            'maxiter': 1000,
-        },
-    )
+            ml.theta,
+            ml.phi,
+            ml.lmax,
+            ml.k,
+            result.x,
+            n,
+            ml.psi,
+            ml.dpsi,
+            ml.ksi,
+            ml.dksi,
+            ml.pi_l,
+            ml.tau_l,
+            ml.eta_tilde,
+        )       
     
-    r_new = result.x.copy()
-    cost = result.fun
-    
-    Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-    S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
-        lam,
-        ml.theta,
-        ml.phi,
-        ml.lmax,
-        ml.k,
-        result.x,
-        n,
-        ml.psi,
-        ml.dpsi,
-        ml.ksi,
-        ml.dksi,
-        ml.pi_l,
-        ml.tau_l,
-        ml.eta_tilde,
-    )       
-    
-#    except Exception as e:
-#        if verbose >= 1:
-#            print(e, flush=True)
-#            
-#        r_new = np.nan*r0
-#        cost = np.nan
-#        Q_sca = None
-#        Q_abs = None
-#        Q_ext = None
-#        p = None
-#        diff_CS = None
+    except Exception as e:
+        if verbose >= 1:
+            print(e, flush=True)
+            
+        r_new = np.nan*r0
+        cost = np.nan
+        Q_sca = None
+        Q_abs = None
+        Q_ext = None
+        p = None
+        diff_CS = None
     
     return r_new, cost, Q_sca, Q_abs, Q_ext, p, diff_CS
 
@@ -663,7 +663,7 @@ def run_needle(
             print(str(np.round(r[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
         for ind in range(n.shape[1]):
-            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n[0,ind+1], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
@@ -685,12 +685,12 @@ def run_needle(
         )
     
     if verbose >= 1 and comm.rank == 0:
-        print('Iteration ' + str(iteration) + ' Design: ', end='', flush=True)
+        print('\nIteration ' + str(iteration) + ' Design: ', end='', flush=True)
         for ind in range(r_new.size):
             print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
         for ind in range(n.shape[1]):
-            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n[0,ind+1], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     mat_profile_new = mat_profile.copy()
@@ -762,7 +762,7 @@ def run_needle(
                 print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
             print('', flush=True)
             for ind in range(n_new.shape[1]):
-                print(str(np.round(n_new[0,ind], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_new[0,ind+1], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
         
         thickness = r_new[:-1] - r_new[1:]
@@ -811,11 +811,14 @@ def run_needle(
                     
         if verbose >= 1 and comm.rank == 0:
             print('\nLayer Clean-Up: ', end='', flush=True)
-            for ind in range(r_fin.size):
-                print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+            try:
+                for ind in range(r_fin.size):
+                    print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+            except:
+                print(r_fin, end='', flush=True)
             print('', flush=True)
             for ind in range(n_fin.shape[1]):
-                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
         
         r_new, cost, Q_sca_fin, Q_abs_fin, Q_ext_fin,\
@@ -834,11 +837,14 @@ def run_needle(
             
         if verbose >= 1 and comm.rank == 0:
             print('\nLayer Clean-Up (post refinement): ', end='', flush=True)
-            for ind in range(r_new.size):
-                print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+            try:
+                for ind in range(r_new.size):
+                    print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
+            except:
+                print(r_new, end='', flush=True)
             print('', flush=True)
             for ind in range(n_fin.shape[1]):
-                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
             
         n_new = n_fin.copy()
@@ -861,11 +867,14 @@ def run_needle(
     if verbose >= 1 and comm.rank == 0:
         print('\n### Optimization Done', flush=True)
         print('Final Design: ', end='', flush=True)
-        for ind in range(r_fin.size):
-            print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+        try:
+            for ind in range(r_fin.size):
+                print(str(np.round(r_fin[ind], 1)) + ' | ', end='', flush=True)
+        except:
+            print(r_fin, end='', flush=True)
         print('', flush=True)
         for ind in range(n_fin.shape[1]):
-            print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     return r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost
