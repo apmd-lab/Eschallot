@@ -105,61 +105,61 @@ def refine_r(
             A[l,l+1] = -1
     constr = LinearConstraint(A, lb=np.ones(r0.size), ub=np.inf*np.ones(r0.size))
     
-    try:
-        result = minimize(
-            cg.cost,
-            r0,
-            args=(
-                n,
-                index,
-                lam,
-                ml,
-                custom_cost,
-            ),
-            method='trust-constr',
-            jac=cg.shape_gradient,
-            constraints=constr,
-            bounds=bnd,
-            options={
-                'verbose': 2 if verbose >= 3 and comm.rank==0 else 0,
-                'gtol': 1e-8,
-                'xtol': 1e-8,
-                'maxiter': 1000,
-            },
-        )
-        
-        r_new = result.x.copy()
-        cost = result.fun
-        
-        Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
-        S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
-            lam,
-            ml.theta,
-            ml.phi,
-            ml.lmax,
-            ml.k,
-            result.x,
+    #try:
+    result = minimize(
+        cg.cost,
+        r0,
+        args=(
             n,
-            ml.psi,
-            ml.dpsi,
-            ml.ksi,
-            ml.dksi,
-            ml.pi_l,
-            ml.tau_l,
-            ml.eta_tilde,
-        )       
+            index,
+            lam,
+            ml,
+            custom_cost,
+        ),
+        method='trust-constr',
+        jac=cg.shape_gradient,
+        constraints=constr,
+        bounds=bnd,
+        options={
+            'verbose': 2 if verbose >= 3 and comm.rank==0 else 0,
+            'gtol': 1e-8,
+            'xtol': 1e-8,
+            'maxiter': 1000,
+        },
+    )
     
-    except Exception as e:
-        if verbose >= 1:
-            print(e, flush=True)
-            
-        r_new = np.nan*r0
-        cost = np.nan
-        Q_sca = None
-        Q_abs = None
-        Q_ext = None
-        p = None
-        diff_CS = None
+    r_new = result.x.copy()
+    cost = result.fun
+    
+    Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, Q_sca_mpE, Q_sca_mpM,\
+    S1_mpE, S1_mpM, S2_mpE, S2_mpM = tmm.efficiencies(
+        lam,
+        ml.theta,
+        ml.phi,
+        ml.lmax,
+        ml.k,
+        result.x,
+        n,
+        ml.psi,
+        ml.dpsi,
+        ml.ksi,
+        ml.dksi,
+        ml.pi_l,
+        ml.tau_l,
+        ml.eta_tilde,
+    )       
+    
+#    except Exception as e:
+#        if verbose >= 1:
+#            print(e, flush=True)
+#            
+#        r_new = np.nan*r0
+#        cost = np.nan
+#        Q_sca = None
+#        Q_abs = None
+#        Q_ext = None
+#        p = None
+#        diff_CS = None
     
     return r_new, cost, Q_sca, Q_abs, Q_ext, p, diff_CS
 

@@ -18,8 +18,7 @@ def simulate(lam, theta, phi, r, n):
         nstop = np.round(x_max + 4*x_max**(1/3) + 2)
     else:
         ind_err = np.argmax(n[:,0]*k*r[0])
-        n_err = n[ind_err,0]
-        raise ValueError('x_max too large -> n = ' + str(n_err) + ' k = ' + str(k) + ' r = ' + str(r))
+        raise ValueError('x_max too large -> n = ' + str(n[ind_err,0]) + ' k = ' + str(k[ind_err]) + ' r = ' + str(r))
     x1 = np.max(np.abs(n[:,1]*k*r[0]))
     if layer == 1:
         x2 = 0
