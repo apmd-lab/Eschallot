@@ -663,7 +663,7 @@ def run_needle(
             print(str(np.round(r[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
         for ind in range(n.shape[1]):
-            print(str(np.round(n[0,ind+1], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
                
     ml_init = multilayer(lam_cost, theta_cost, phi_cost)
@@ -690,7 +690,7 @@ def run_needle(
             print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
         print('', flush=True)
         for ind in range(n.shape[1]):
-            print(str(np.round(n[0,ind+1], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n[0,ind], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     mat_profile_new = mat_profile.copy()
@@ -762,7 +762,7 @@ def run_needle(
                 print(str(np.round(r_new[ind], 1)) + ' | ', end='', flush=True)
             print('', flush=True)
             for ind in range(n_new.shape[1]):
-                print(str(np.round(n_new[0,ind+1], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_new[0,ind], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
         
         thickness = r_new[:-1] - r_new[1:]
@@ -818,7 +818,7 @@ def run_needle(
                 print(r_fin, end='', flush=True)
             print('', flush=True)
             for ind in range(n_fin.shape[1]):
-                print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
         
         r_new, cost, Q_sca_fin, Q_abs_fin, Q_ext_fin,\
@@ -844,7 +844,7 @@ def run_needle(
                 print(r_new, end='', flush=True)
             print('', flush=True)
             for ind in range(n_fin.shape[1]):
-                print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
+                print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
             print('', flush=True)
             
         n_new = n_fin.copy()
@@ -874,7 +874,7 @@ def run_needle(
             print(r_fin, end='', flush=True)
         print('', flush=True)
         for ind in range(n_fin.shape[1]):
-            print(str(np.round(n_fin[0,ind+1], 2)) + ' | ', end='', flush=True)
+            print(str(np.round(n_fin[0,ind], 2)) + ' | ', end='', flush=True)
         print('', flush=True)
     
     return r_fin, n_fin, Q_sca_fin, Q_abs_fin, Q_ext_fin, p_fin, diff_CS_fin, cost
