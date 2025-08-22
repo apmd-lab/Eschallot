@@ -3,28 +3,29 @@ import eschallot.mie.special_functions as spec
 import eschallot.mie.tmm_mie as tmm
 import eschallot.util.read_mat_data as rmd
 
-def simulate(lam, theta, phi, r, n):
+def simulate(lam, theta, phi, r, n, lmax=None):
     k = (2*np.pi)/lam
     
     wvl = np.size(lam)
     layer = np.size(r)
     
-    x_max = np.max(n[:,0]*k*r[0])
-    if x_max <= 8:
-        nstop = np.round(x_max + 4*x_max**(1/3) + 1)
-    elif x_max <= 4200:
-        nstop = np.round(x_max + 4.05*x_max**(1/3) + 2)
-    elif x_max <= 20000:
-        nstop = np.round(x_max + 4*x_max**(1/3) + 2)
-    else:
-        ind_err = np.argmax(n[:,0]*k*r[0])
-        raise ValueError('x_max too large -> n = ' + str(n[ind_err,0]) + ' k = ' + str(k[ind_err]) + ' r = ' + str(r))
-    x1 = np.max(np.abs(n[:,1]*k*r[0]))
-    if layer == 1:
-        x2 = 0
-    else:
-        x2 = np.max(np.abs(n[:,1]*k*r[1]))
-    lmax = int(np.real(np.round(np.max(np.array([nstop,x1,x2]))) + 15))
+    if lmax is None:
+        x_max = np.max(n[:,0]*k*r[0])
+        if x_max <= 8:
+            nstop = np.round(x_max + 4*x_max**(1/3) + 1)
+        elif x_max <= 4200:
+            nstop = np.round(x_max + 4.05*x_max**(1/3) + 2)
+        elif x_max <= 20000:
+            nstop = np.round(x_max + 4*x_max**(1/3) + 2)
+        else:
+            ind_err = np.argmax(n[:,0]*k*r[0])
+            raise ValueError('x_max too large -> n = ' + str(n[ind_err,0]) + ' k = ' + str(k[ind_err]) + ' r = ' + str(r))
+        x1 = np.max(np.abs(n[:,1]*k*r[0]))
+        if layer == 1:
+            x2 = 0
+        else:
+            x2 = np.max(np.abs(n[:,1]*k*r[1]))
+        lmax = int(np.real(np.round(np.max(np.array([nstop,x1,x2]))) + 15))
     
     while True:
         # Legendre polynomials
