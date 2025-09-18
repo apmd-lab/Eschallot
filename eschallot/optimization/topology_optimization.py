@@ -37,7 +37,7 @@ class multilayer:
             elif x_max <= 20000:
                 nstop = np.round(x_max + 4*x_max**(1/3) + 2)
             else:
-                raise ValueError('x_max too large')
+                raise ValueError('x_max too large --> r[0] = ' + str(r[0]) + ' n[:,0] = ' + str(n[:,0]))
                 
             x1 = np.max(np.abs(n[:,1]*self.k*r[0]))
             if layer == 1:

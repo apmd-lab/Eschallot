@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='eschallot',                # Package name
-      version='0.2.6',                         # Package version
+      version='0.4.7',                         # Package version
       author='Seokhwan Min',                      # Your name
       author_email='petermsh513@gmail.com',   # Your email address
       description='Optimization tool for light-scattering multi-shell spherical particles.',  # Short description

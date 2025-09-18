@@ -35,18 +35,18 @@ class cost_obj:
         self.ind_exclude = ind_exclude
     
     def cost(self, Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml):
-        cost = np.mean((p[0,self.ind_exclude:,:] - self.phase_fct_tgt[self.ind_exclude:,:])**2)
+        cost = 1e2*np.mean((p[0,self.ind_exclude:,:] - self.phase_fct_tgt[self.ind_exclude:,:])**2)
         
         return cost
     
     def gradient(self, Q_sca, Q_abs, Q_ext, p, diff_CS, t_El, t_Ml, dQ_sca, dQ_abs, dQ_ext, dp, d_diff_CS, dt_El, dt_Ml, r):
         jac = 2*(p[0,self.ind_exclude:,:] - self.phase_fct_tgt[self.ind_exclude:,:])[:,:,np.newaxis]*dp[0,self.ind_exclude:,:,:]/self.phase_fct_tgt.size
-        jac = np.sum(jac, axis=(0,1))
+        jac = 1e2*np.sum(jac, axis=(0,1))
     
         return jac
 
 ## Define Cost Function
-n_seed = 6
+n_seed = 12
 np.random.seed(n_seed)
 pf_tgt = np.random.rand(theta_cost.size*phi_cost.size)
 pf_tgt[0] *= 10
@@ -57,22 +57,22 @@ pf_tgt[0,:] = pf_tgt[0,0]
 pf_tgt[-1,:] = pf_tgt[-1,0]
 pf_tgt = (np.tanh(8*(2*pf_tgt - 1)) + 1)/2
 pf_norm = np.sum(np.pi*trapezoid(pf_tgt*np.sin(theta_cost)[:,np.newaxis], theta_cost, axis=0))
-pf_tgt *= 0.5/pf_norm
-np.savez(directory + '/phase_fct_tgt_seed' + str(n_seed), pf_tgt=pf_tgt)
+pf_tgt *= 0.3/pf_norm
+np.savez(directory + '/phase_fct_tgt_seed_scale0_3' + str(n_seed), pf_tgt=pf_tgt)
 
-custom_cost = cost_obj(pf_tgt, 21)
+custom_cost = cost_obj(pf_tgt, 16)
 
 # Sweep Settings
 r_min = 10
-r_max = 2500
+r_max = 3000
 N_sweep = int(r_max - r_min) + 1
 d_low = 5
 max_layers = None
 
 if 'Ag_palik' in mat_needle:
-    output_filename = directory + '/topopt_result_arbitray_phase_fct_lossy_' + str(mat_profile[1]) + '_rmax_seed' + str(n_seed)
+    output_filename = directory + '/topopt_result_arbitray_phase_fct_scale0_3_lossy_' + str(mat_profile[1]) + '_rmax' + str(r_max) + '_seed' + str(n_seed)
 else:
-    output_filename = directory + '/topopt_result_arbitray_phase_fct_lossless_' + str(mat_profile[1]) + '_rmax_seed' + str(n_seed)
+    output_filename = directory + '/topopt_result_arbitray_phase_fct_scale0_3_lossless_' + str(mat_profile[1]) + '_rmax' + str(r_max) + '_seed' + str(n_seed)
 
 t1 = time.time()
 topopt.radius_sweep(output_filename,
